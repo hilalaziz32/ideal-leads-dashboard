@@ -317,3 +317,16 @@ textarea.input { resize: vertical; min-height: 80px; }
   border-radius: 50%;
   animation: pulse 1.5s ease infinite;
 }
+
+/* Global Layout */
+.app-container {
+  display: flex;
+  min-height: calc(100vh - 61px);
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  min-height: calc(100vh - 61px);
+}

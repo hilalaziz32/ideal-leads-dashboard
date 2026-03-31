@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import GlobalSidebar from '@/components/GlobalSidebar'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,7 +23,10 @@ export default function RootLayout({
             <a href="/" className="nav-link">Dashboard</a>
           </div>
         </nav>
-        <main>{children}</main>
+        <div className="app-container">
+          <GlobalSidebar />
+          <main className="main-content">{children}</main>
+        </div>
       </body>
     </html>
   )
