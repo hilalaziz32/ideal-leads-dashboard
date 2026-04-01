@@ -53,6 +53,8 @@ export default function LeadDetailPage() {
   const [qualifying, setQualifying] = useState(false)
   const [qualified, setQualified] = useState(false)
   const [urlCopied, setUrlCopied] = useState(false)
+  const [referralPartners, setReferralPartners] = useState<any[]>([])
+  const [savingReferral, setSavingReferral] = useState(false)
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
@@ -63,7 +65,36 @@ export default function LeadDetailPage() {
       })
       .catch(() => setError('Network error'))
       .finally(() => setLoading(false))
+
+    fetch('/api/referrals')
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d)) setReferralPartners(d)
+      })
+      .catch(console.error)
   }, [id])
+
+  const handleReferralChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value === 'none' ? null : e.target.value
+    setSavingReferral(true)
+    
+    // optimistic update
+    if (data) {
+      setData({ ...data, lead: { ...data.lead, referral_id: val } })
+    }
+
+    try {
+      await fetch(`/api/leads/${id}/referral`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referral_id: val })
+      })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingReferral(false)
+    }
+  }
 
   const handleQualify = async () => {
     setQualifying(true)
@@ -139,6 +170,20 @@ export default function LeadDetailPage() {
                 </span>
                 {isOverdue && <span className="badge badge-danger">⚠ Overdue</span>}
                 {lead.service_type && <span className="badge badge-info">{lead.service_type}</span>}
+              </div>
+              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Referred By:</span>
+                <select 
+                  style={{ padding: '6px 12px', fontSize: 13, fontWeight: 600, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', outline: 'none' }}
+                  disabled={savingReferral}
+                  value={lead.referral_id || 'none'}
+                  onChange={handleReferralChange}
+                >
+                  <option value="none">None (Direct / Website)</option>
+                  {referralPartners.map(rp => (
+                    <option key={rp.id} value={rp.id}>{rp.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

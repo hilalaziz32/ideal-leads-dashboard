@@ -18,8 +18,9 @@ export default function RootLayout({
         <nav className="nav">
           <div className="nav-inner">
             <a href="/" className="nav-brand">
-              ⚡ Ideal<span>Leads</span>
+              Ideal Leads
             </a>
+            <div style={{ flex: 1 }} />
             <a href="/" className="nav-link">Dashboard</a>
           </div>
         </nav>

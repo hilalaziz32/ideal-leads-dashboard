@@ -1,193 +1,383 @@
+/* ───── Page ───── */
 .page {
   padding-bottom: 80px;
+  background: var(--bg-secondary);
+  min-height: 100%;
 }
 
-.header {
-  padding: 36px 0 28px;
+/* ───── Page Header ───── */
+.pageHeader {
+  padding: 48px 48px 32px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 28px;
 }
 
-.headerStats {
+.pageTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* ───── Tab Strip ───── */
+.tabStrip {
   display: flex;
   gap: 32px;
+  padding: 0 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 65px;
+  z-index: 50;
+  margin-bottom: 40px;
 }
 
-.stat {
+.tab {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  transition: all var(--transition);
+  margin-bottom: -1px;
 }
 
-.statValue {
-  font-size: 22px;
+.tab:hover {
+  color: var(--text-secondary);
+}
+
+.tabActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tabCount {
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--border);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-xl);
+  transition: all var(--transition);
+}
+
+.tabActive .tabCount {
+  background: var(--accent-glow);
+  color: var(--accent-dark);
+}
+
+/* ───── Content Area ───── */
+.content {
+  padding: 0 48px 40px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ───── KPI Summary Cards ───── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.kpiCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
+}
+
+.kpiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.kpiValue {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* ───── Chart Layout Area ───── */
+.chartContainer {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 40px;
+}
+
+.chartHeader {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.chartTitle {
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
 }
 
-.statLabel {
-  font-size: 12px;
+.chartSubtitle {
+  font-size: 13px;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  margin-top: 4px;
 }
 
-.filters {
+/* ───── Settings Modal/Panel ───── */
+.settingsPanel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.settingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.settingInput {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-base);
+  width: 100%;
+}
+.settingInput:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.settingsActions {
   display: flex;
   gap: 12px;
+  margin-top: 24px;
+}
+
+/* ───── Section heading ───── */
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
   margin-bottom: 24px;
-  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.searchInput {
+.sectionTitle::after {
+  content: '';
   flex: 1;
-  min-width: 220px;
+  height: 1px;
+  background: var(--border);
 }
 
-.filterSelect {
-  width: auto;
-  min-width: 160px;
-}
-
-.tableWrap {
-  overflow-x: auto;
-  border-radius: var(--radius-lg);
+/* ───── Spreadsheet Table Shell ───── */
+.spreadsheetWrap {
+  background: var(--bg-card);
   border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 40px;
 }
 
-.table {
+.spreadsheetTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1000px;
+}
+
+.spreadsheetTable th, .spreadsheetTable td {
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.spreadsheetTable thead th {
+  background: var(--bg-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.spreadsheetTable tbody th.rowGroup {
+  background: #2D3748; /* Dark navy for source headers like the spreadsheet */
+  color: #FFFFFF;
+  text-align: left;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.spreadsheetTable tbody td.rowLabel {
+  text-align: left;
+  font-weight: 600;
+  padding-left: 16px;
+  width: 180px;
+  background: #F8FAFC;
+}
+
+.spreadsheetTable td.targetRow {
+  background: rgba(255, 238, 204, 0.4); /* Slight warm emphasis for targets */
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.spreadsheetTable td.targetCell {
+  color: #D97706; /* distinct target color */
+  font-weight: 700;
+  background: transparent !important;
+}
+
+.spreadsheetTable td.actualCell {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.spreadsheetTable td.deficit {
+  color: var(--danger);
+  background: rgba(220, 38, 38, 0.05);
+}
+
+.spreadsheetTable td.surplus {
+  color: var(--success);
+  background: rgba(5, 150, 105, 0.05);
+}
+
+.spreadsheetTable td.todayCol {
+  background: var(--bg-glass) !important;
+  border-left: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+}
+
+.spreadsheetTable td.empty {
+  color: var(--border-hover);
+}
+
+.helpText {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: block;
+}
+
+/* Standard Simple Grid Table (Screening tab) */
+.tableWrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.metricsTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-.table thead {
-  background: var(--bg-secondary);
-}
-
-.table th {
-  padding: 12px 16px;
+.metricsTable thead th {
+  padding: 16px 20px;
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metricsTable tbody td {
+  padding: 16px 20px;
+  text-align: left;
   border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
-.table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-.table tbody tr {
-  background: var(--bg-card);
-  transition: background var(--transition);
-}
-
-.table tbody tr:hover {
-  background: var(--bg-card-hover);
-}
-
-.table tbody tr:last-child td {
+.metricsTable tbody tr:last-child td {
   border-bottom: none;
 }
 
-.rowOverdue {
-  background: rgba(239, 68, 68, 0.04) !important;
-}
-.rowOverdue:hover {
-  background: rgba(239, 68, 68, 0.07) !important;
-}
-
-.contactCell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--accent-glow);
-  border: 1px solid var(--border-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent-light);
-  flex-shrink: 0;
-}
-
-.contactName {
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-}
-
-.contactEmail {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.dealValue {
-  font-weight: 600;
-  color: var(--success);
-  font-variant-numeric: tabular-nums;
-}
-
-.muted {
-  color: var(--text-secondary);
-}
-
-.dueDateText {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.overdueDateText {
-  color: var(--danger);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-/* Copy URL button */
-.copyBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: var(--bg-glass);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition);
-  white-space: nowrap;
-}
-
-.copyBtn:hover {
-  color: var(--accent-light);
-  border-color: var(--border-accent);
-  background: var(--accent-glow);
-}
-
-.copyIcon {
-  font-size: 13px;
+.metricsTable tbody tr:hover td {
+  background: var(--bg-secondary);
 }

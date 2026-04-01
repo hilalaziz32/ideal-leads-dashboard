@@ -1,25 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { LeadWithOverdue } from '@/lib/types'
 import styles from '../dashboard.module.css'
 
-const STAGE_COLORS: Record<string, string> = {
-  'new-lead': '#6366f1',
-  'order-review': '#8b5cf6',
-  'pending-approval': '#f59e0b',
-  'approved': '#10b981',
-  'job-description': '#3b82f6',
-  'confirmation-sent': '#06b6d4',
-  'active-recruitment': '#84cc16',
-  'candidates-sourced': '#a3e635',
-  'candidates-submitted': '#f97316',
-  'rm-interview': '#fb923c',
-  'josh-interview': '#e879f9',
-  'client-interview': '#c084fc',
-  'offer-placement': '#34d399',
-  'closed': '#6b7280',
+const STAGE_COLORS: Record<string, { bg: string, text: string }> = {
+  'new-lead': { bg: 'var(--accent-glow)', text: 'var(--accent-dark)' },
+  'order-review': { bg: 'var(--purple-bg)', text: 'var(--purple)' },
+  'pending-approval': { bg: 'var(--warning-bg)', text: 'var(--warning)' },
+  'approved': { bg: 'var(--success-bg)', text: 'var(--success)' },
+  'job-description': { bg: 'var(--info-bg)', text: 'var(--info)' },
+  'confirmation-sent': { bg: 'var(--info-bg)', text: 'var(--info)' },
+  'active-recruitment': { bg: 'rgba(132, 204, 22, 0.1)', text: '#65a30d' },
+  'candidates-sourced': { bg: 'rgba(163, 230, 53, 0.2)', text: '#65a30d' },
+  'candidates-submitted': { bg: 'var(--warning-bg)', text: 'var(--warning)' },
+  'rm-interview': { bg: 'var(--warning-bg)', text: 'var(--warning)' },
+  'josh-interview': { bg: 'var(--purple-bg)', text: 'var(--purple)' },
+  'client-interview': { bg: 'var(--purple-bg)', text: 'var(--purple)' },
+  'offer-placement': { bg: 'var(--success-bg)', text: 'var(--success)' },
+  'closed': { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)' },
 }
 
 function formatCurrency(val: number) {
@@ -27,7 +27,8 @@ function formatCurrency(val: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function CopyUrlButton({ url }: { url: string }) {
@@ -44,20 +45,17 @@ function CopyUrlButton({ url }: { url: string }) {
 
   return (
     <button
-      className={styles.copyBtn}
+      className="btn btn-secondary"
       onClick={handleCopy}
-      title="Copy client link"
+      style={{ padding: '6px 12px', fontSize: 11, borderRadius: 'var(--radius-xl)' }}
     >
-      {copied ? (
-        <><span className={styles.copyIcon}>✓</span> Copied</>
-      ) : (
-        <><span className={styles.copyIcon}>⎘</span> Copy link</>
-      )}
+      {copied ? 'Copied' : 'Copy Link'}
     </button>
   )
 }
 
-export default function DashboardPage() {
+export default function LeadsPipelinePage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<LeadWithOverdue[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,9 +68,9 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setLeads(data)
-        else setError(data.error ?? 'Failed to load leads')
+        else setError(data.error ?? 'Failed to load pipeline data')
       })
-      .catch(() => setError('Network error'))
+      .catch(() => setError('Network connection failed'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -95,26 +93,29 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <div className="page-container">
-        <div className={styles.header}>
-          <div>
-            <h1 className="page-title">Leads Pipeline</h1>
-            <p className="page-subtitle">{leads.length} total leads · {overdueCount} overdue</p>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Pipeline Overview</h1>
+          <p className={styles.pageSubtitle}>
+            {leads.length} Active Leads in Queue
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.content}>
+        <div className={styles.kpiGrid}>
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiLabel}>Total Leads</div>
+            <div className={styles.kpiValue}>{leads.length}</div>
           </div>
-          <div className={styles.headerStats}>
-            <div className={styles.stat}>
-              <span className={styles.statValue}>{leads.length}</span>
-              <span className={styles.statLabel}>Total</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue} style={{ color: 'var(--danger)' }}>{overdueCount}</span>
-              <span className={styles.statLabel}>Overdue</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statValue} style={{ color: 'var(--success)' }}>
-                {formatCurrency(leads.reduce((s, l) => s + (l.deal_value ?? 0), 0))}
-              </span>
-              <span className={styles.statLabel}>Pipeline Value</span>
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiLabel} style={{ color: 'var(--danger)' }}>Action Required</div>
+            <div className={styles.kpiValue} style={{ color: overdueCount > 0 ? 'var(--danger)' : '' }}>{overdueCount}</div>
+          </div>
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiLabel} style={{ color: 'var(--success)' }}>Total Pipeline Value</div>
+            <div className={styles.kpiValue} style={{ color: 'var(--success)' }}>
+              {formatCurrency(leads.reduce((s, l) => s + (l.deal_value ?? 0), 0))}
             </div>
           </div>
         </div>
@@ -122,123 +123,129 @@ export default function DashboardPage() {
         <div className={styles.filters}>
           <input
             type="text"
-            className={`input ${styles.searchInput}`}
-            placeholder="Search by name, email, exec…"
+            className="input searchInput"
+            placeholder="Search by name, email, or executive..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <select
-            className={`input ${styles.filterSelect}`}
+            className="input filterSelect"
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
           >
-            <option value="all">All Stages</option>
+            <option value="all">All Pipeline Stages</option>
             {stages.map((s) => (
-              <option key={s} value={s}>{s.replace(/-/g, ' ')}</option>
+              <option key={s} value={s}>{s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
             ))}
           </select>
           <button
             className={`btn ${overdueOnly ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => setOverdueOnly(!overdueOnly)}
+            style={{ borderRadius: 'var(--radius-xl)' }}
           >
-            <span className={overdueOnly ? 'overdue-dot' : ''} />
-            Overdue Only
+            {overdueOnly ? 'Clear Overdue Filter' : 'Show Overdue Only'}
           </button>
         </div>
 
         {loading && (
           <div className="loading-spinner">
             <div className="spinner" />
-            <span>Loading leads…</span>
+            <span>Loading pipeline data...</span>
           </div>
         )}
 
         {error && (
-          <div className="error-state">
-            <h3>Error</h3>
+          <div style={{ color: 'var(--danger)', padding: 24, background: 'var(--danger-bg)', borderRadius: 'var(--radius-lg)' }}>
+            <h3 style={{ fontSize: 16, marginBottom: 8 }}>Attention Required</h3>
             <p>{error}</p>
           </div>
         )}
 
         {!loading && !error && filtered.length === 0 && (
-          <div className="empty-state">
-            <h3>No leads found</h3>
-            <p>Try adjusting your search or filters.</p>
+          <div style={{ textAlign: 'center', padding: '80px 24px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)' }}>
+            <p style={{ color: 'var(--text-muted)' }}>No leads match your current search constraints.</p>
           </div>
         )}
 
         {!loading && !error && filtered.length > 0 && (
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
+            <table className={styles.metricsTable} style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Contact</th>
-                  <th>Stage</th>
+                  <th>Client Contact</th>
+                  <th>Current Stage</th>
                   <th>Deal Value</th>
                   <th>Executive</th>
-                  <th>Due Date</th>
+                  <th>SLA Deadline</th>
                   <th>Created</th>
-                  <th>Client URL</th>
-                  <th></th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead) => (
-                  <tr key={lead.id} className={lead.is_overdue ? styles.rowOverdue : ''}>
-                    <td>
-                      <div className={styles.contactCell}>
-                        <div className={styles.avatar}>
-                          {(lead.contact_name ?? '?')[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className={styles.contactName}>
-                            {lead.contact_name ?? '—'}
-                            {lead.is_overdue && <span className="overdue-dot" style={{ marginLeft: 8 }} />}
+                {filtered.map((lead) => {
+                  const dangerState = lead.is_overdue
+                  const styleData = STAGE_COLORS[lead.current_stage] ?? STAGE_COLORS['closed']
+                  
+                  return (
+                    <tr 
+                      key={lead.id} 
+                      style={{ 
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                        background: dangerState ? 'var(--danger-bg)' : 'transparent' 
+                      }}
+                      onClick={() => router.push(`/leads/${lead.id}`)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = dangerState ? 'rgba(220, 38, 38, 0.12)' : 'var(--bg-secondary)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = dangerState ? 'var(--danger-bg)' : 'transparent'
+                      }}
+                    >
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {lead.contact_name ?? 'Unnamed Lead'}
+                            {dangerState && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)' }} title="Overdue" />}
                           </div>
-                          <div className={styles.contactEmail}>{lead.contact_email ?? ''}</div>
+                          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{lead.contact_email ?? 'No email provided'}</div>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className="badge"
-                        style={{
-                          background: `${STAGE_COLORS[lead.current_stage] ?? '#6366f1'}1a`,
-                          color: STAGE_COLORS[lead.current_stage] ?? '#6366f1',
-                          border: `1px solid ${STAGE_COLORS[lead.current_stage] ?? '#6366f1'}40`,
-                        }}
-                      >
-                        {lead.stage_label}
-                      </span>
-                    </td>
-                    <td className={styles.dealValue}>
-                      {lead.deal_value ? formatCurrency(lead.deal_value) : '—'}
-                    </td>
-                    <td className={styles.muted}>{lead.executive ?? lead.assigned_to ?? '—'}</td>
-                    <td>
-                      {lead.due_date ? (
-                        <span className={lead.is_overdue ? styles.overdueDateText : styles.dueDateText}>
-                          {formatDate(lead.due_date.due_at)}
+                      </td>
+                      <td>
+                        <span
+                          className="badge"
+                          style={{
+                            background: styleData.bg,
+                            color: styleData.text
+                          }}
+                        >
+                          {lead.stage_label}
                         </span>
-                      ) : (
-                        <span className={styles.muted}>—</span>
-                      )}
-                    </td>
-                    <td className={styles.muted}>{formatDate(lead.created_at)}</td>
-                    <td>
-                      {lead.context_url ? (
-                        <CopyUrlButton url={lead.context_url} />
-                      ) : (
-                        <span className={styles.muted}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <Link href={`/leads/${lead.id}`} className="btn btn-secondary" style={{ fontSize: 13, padding: '7px 14px' }}>
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                        {lead.deal_value ? formatCurrency(lead.deal_value) : '—'}
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{lead.executive ?? lead.assigned_to ?? '—'}</td>
+                      <td>
+                        {lead.due_date ? (
+                          <span style={{ color: dangerState ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: 600 }}>
+                            {formatDate(lead.due_date.due_at)}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{formatDate(lead.created_at)}</td>
+                      <td>
+                        {lead.context_url ? (
+                          <CopyUrlButton url={lead.context_url} />
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

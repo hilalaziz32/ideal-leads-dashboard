@@ -1,13 +1,50 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { LeadWithOverdue } from '@/lib/types'
 import styles from './dashboard.module.css'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts'
+
+interface ScreeningManualActual {
+  test_title: string
+  day: string
+  l1_actual: number
+  hires_actual: number
+}
+
+interface ScreeningTestTarget {
+  test_title: string
+  target_completed: number
+  target_passed: number
+  target_l1: number
+  target_hires: number
+  target_days: number[]
+}
+
+interface ScreeningStat {
+  day: string
+  job_name: string | null
+  test_title: string
+  submitted_count: number
+  passed_count: number
+  failed_count: number
+  disqualified_count: number
+}
 
 function isWebsiteSource(source: string | null) {
   if (!source) return false
   source = source.toLowerCase()
-  // simple heuristic for "domain": contains a dot and doesn't have spaces
   return source.includes('.') && !source.includes(' ')
 }
 
@@ -17,10 +54,9 @@ function isMetaSource(source: string | null) {
   return source.includes('facebook') || source.includes('instagram') || source.includes('meta')
 }
 
-// Generate the last 14 days
-function generateDates() {
-  const dates = []
-  for (let i = 13; i >= 0; i--) {
+function generateDates(days = 14) {
+  const dates: Date[] = []
+  for (let i = days - 1; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     dates.push(d)
@@ -28,8 +64,12 @@ function generateDates() {
   return dates
 }
 
-function formatDateHeader(d: Date) {
+function fmtDate(d: Date) {
   return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function fmtISO(d: Date) {
+  return d.toISOString().slice(0, 10)
 }
 
 function isSameDay(d1: Date, d2: Date) {
@@ -40,33 +80,174 @@ function isSameDay(d1: Date, d2: Date) {
   )
 }
 
+function isToday(d: Date) {
+  return isSameDay(d, new Date())
+}
+
+type Tab = 'leads' | 'screening'
+
 export default function MetricsDashboard() {
+  const [activeTab, setActiveTab] = useState<Tab>('leads')
   const [leads, setLeads] = useState<LeadWithOverdue[]>([])
+  const [screeningStats, setScreeningStats] = useState<ScreeningStat[]>([])
+  const [config, setConfig] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [isEditingTargets, setIsEditingTargets] = useState(false)
+  const [configDraft, setConfigDraft] = useState<Record<string, number>>({})
+  const [screeningManualActuals, setScreeningManualActuals] = useState<ScreeningManualActual[]>([])
+  const [screeningTargets, setScreeningTargets] = useState<ScreeningTestTarget[]>([])
+  const [expandedTests, setExpandedTests] = useState<Record<string, boolean>>({})
+  const [editingTestTarget, setEditingTestTarget] = useState<string | null>(null)
+  const [testTargetDraft, setTestTargetDraft] = useState<ScreeningTestTarget | null>(null)
+
+  const dates = useMemo(() => generateDates(14), [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [leadsRes, screeningRes, configRes, manualRes, targetsRes] = await Promise.all([
+        fetch('/api/leads').then(r => r.json()),
+        fetch('/api/screening-stats').then(r => r.json()),
+        fetch('/api/config').then(r => r.json()),
+        fetch('/api/screening/actuals').then(r => r.json()),
+        fetch('/api/screening/targets').then(r => r.json())
+      ])
+      if (Array.isArray(leadsRes)) setLeads(leadsRes)
+      if (Array.isArray(screeningRes)) setScreeningStats(screeningRes)
+      if (configRes && !configRes.error) {
+        setConfig(configRes)
+        setConfigDraft(configRes)
+      }
+      if (Array.isArray(manualRes)) setScreeningManualActuals(manualRes)
+      if (Array.isArray(targetsRes)) setScreeningTargets(targetsRes)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    fetch('/api/leads')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setLeads(data)
-      })
-      .finally(() => setLoading(false))
+    fetchData()
   }, [])
 
-  const dates = generateDates()
+  const handleSaveConfig = async () => {
+    setIsEditingTargets(false)
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: configDraft })
+      })
+      setConfig(configDraft) // Optimistic update
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
-  // Targets (these would ideally come from a DB or settings, hardcoding as per screenshot feeling)
-  const T_META_LEADS: number = 20
-  const T_WEBSITE_SESSIONS: number = 1
-  const T_REFERRAL_LEADS: number = 0
-  const T_REORDERS: number = 0
+  
+  const handleToggleTest = (title: string) => {
+    setExpandedTests(prev => ({ ...prev, [title]: !prev[title] }))
+  }
+
+  const handleManualActualUpdate = async (test_title: string, dayISO: string, field: 'l1_actual' | 'hires_actual', val: string) => {
+    let value = parseInt(val)
+    if (isNaN(value)) value = 0
+
+    // optimistic
+    setScreeningManualActuals(prev => {
+      const existing = prev.find(p => p.test_title === test_title && p.day === dayISO)
+      if (existing) {
+        return prev.map(p => p.test_title === test_title && p.day === dayISO ? { ...p, [field]: value } : p)
+      }
+      return [...prev, { test_title, day: dayISO, l1_actual: field === 'l1_actual' ? value : 0, hires_actual: field === 'hires_actual' ? value : 0 }]
+    })
+
+    await fetch('/api/screening/actuals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test_title, day: dayISO, field, value })
+    })
+  }
+
+  const handleSaveTestTarget = async () => {
+    if (!testTargetDraft) return
+    setEditingTestTarget(null)
+
+    // optimistic
+    setScreeningTargets(prev => {
+      const idx = prev.findIndex(p => p.test_title === testTargetDraft.test_title)
+      if (idx > -1) {
+        const copy = [...prev]
+        copy[idx] = testTargetDraft
+        return copy
+      }
+      return [...prev, testTargetDraft]
+    })
+
+    await fetch('/api/screening/targets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testTargetDraft)
+    })
+  }
+
+  // ── Leads KPI rollups ──
+  const totalLeads = leads.length
+  const metaLeads = leads.filter((l) => isMetaSource(l.source)).length
+  const websiteLeads = leads.filter((l) => isWebsiteSource(l.source)).length
+  const referralLeads = leads.filter((l) => l.source?.toLowerCase().includes('referral')).length
+
+  const leadChartData = useMemo(() => {
+    return dates.map(d => {
+      const dayLeads = leads.filter(l => isSameDay(new Date(l.created_at), d))
+      return {
+        date: fmtDate(d),
+        Meta: dayLeads.filter(l => isMetaSource(l.source)).length,
+        Website: dayLeads.filter(l => isWebsiteSource(l.source)).length,
+        Referral: dayLeads.filter(l => l.source?.toLowerCase().includes('referral')).length,
+        Other: dayLeads.filter(l => !isMetaSource(l.source) && !isWebsiteSource(l.source) && !l.source?.toLowerCase().includes('referral')).length
+      }
+    })
+  }, [dates, leads])
+
+  // ── Target Derivations ──
+  const metaDaily = config['target_meta_daily'] || 20
+  const websiteWeekly = config['target_website_weekly'] || 1
+  const activeClients = config['active_clients_count'] || 100
+  const refPct = config['target_referral_pct'] || 0.15
+  const reorderPct = config['target_reorder_pct'] || 0.07
+
+  const projectedReferral = Math.round(activeClients * refPct)
+  const projectedReorder = Math.round(activeClients * reorderPct)
+
+  // ── Screening ──
+  const last14Days = useMemo(() => dates.map(fmtISO), [dates])
+  const screeningLast14 = useMemo(
+    () => screeningStats.filter((s) => last14Days.includes(s.day)),
+    [screeningStats, last14Days]
+  )
+  const testTitles = useMemo(() => [...new Set(screeningStats.map((s) => s.test_title))].sort(), [screeningStats])
+
+  const testSummary = useMemo(() => {
+    return testTitles.map((title) => {
+      const rows = screeningLast14.filter((s) => s.test_title === title)
+      const job = rows.find((r) => r.job_name)?.job_name ?? null
+      return {
+        title,
+        job,
+        submitted: rows.reduce((a, r) => a + r.submitted_count, 0),
+        passed: rows.reduce((a, r) => a + r.passed_count, 0),
+        failed: rows.reduce((a, r) => a + r.failed_count, 0),
+      }
+    })
+  }, [testTitles, screeningLast14])
+
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="loading-spinner" style={{ marginTop: '10vh' }}>
-          <div className="spinner" />
-          <span>Loading metrics...</span>
+      <div className={styles.page}>
+        <div className={styles.loading_spinner}>
+          <div className={styles.spinner} />
+          <span>Synchronizing System...</span>
         </div>
       </div>
     )
@@ -74,96 +255,508 @@ export default function MetricsDashboard() {
 
   return (
     <div className={styles.page}>
-      <div className="page-container" style={{ maxWidth: '100%', padding: '32px' }}>
-        <h1 className="page-title" style={{ marginBottom: 32 }}>DASHBOARD 1 - NEW ORDERS</h1>
-        
-        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}>
-          <table className={styles.metricsTable} style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ width: '200px', textAlign: 'left', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}></th>
-                {dates.map((d, i) => (
-                  <th key={i} style={{ textAlign: 'center', padding: '12px 8px', fontSize: 13, borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-                    {formatDateHeader(d)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* META */}
-              <tr style={{ background: 'var(--bg-card)' }}>
-                <td colSpan={dates.length + 1} style={{ padding: '8px 16px', fontWeight: 'bold', fontSize: 12, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
-                  META
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--danger)' }}>Target</span></td>
-                {dates.map((d, i) => <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{T_META_LEADS}</td>)}
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--text-muted)' }}>Actual</span></td>
-                {dates.map((d, i) => {
-                  const actual = leads.filter(l => isMetaSource(l.source) && isSameDay(new Date(l.created_at), d)).length
-                  return <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{actual || '—'}</td>
-                })}
-              </tr>
-
-              {/* WEBSITE */}
-              <tr style={{ background: 'var(--bg-card)' }}>
-                <td colSpan={dates.length + 1} style={{ padding: '8px 16px', fontWeight: 'bold', fontSize: 12, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
-                  WEBSITE
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--danger)' }}>Target</span></td>
-                {dates.map((d, i) => <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{T_WEBSITE_SESSIONS === 0 ? '—' : T_WEBSITE_SESSIONS}</td>)}
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--text-muted)' }}>Actual</span></td>
-                {dates.map((d, i) => {
-                  const actual = leads.filter(l => isWebsiteSource(l.source) && isSameDay(new Date(l.created_at), d)).length
-                  return <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{actual || '—'}</td>
-                })}
-              </tr>
-
-              {/* REFERRAL */}
-              <tr style={{ background: 'var(--bg-card)' }}>
-                <td colSpan={dates.length + 1} style={{ padding: '8px 16px', fontWeight: 'bold', fontSize: 12, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
-                  REFERRAL
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--danger)' }}>Target</span></td>
-                <td colSpan={dates.length} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>Referral targets dynamically calculated in spreadsheet</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Leads <span style={{ float: 'right', color: 'var(--text-muted)' }}>Actual</span></td>
-                {dates.map((d, i) => {
-                  const actual = leads.filter(l => l.source?.toLowerCase().includes('referral') && isSameDay(new Date(l.created_at), d)).length
-                  return <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{actual || '—'}</td>
-                })}
-              </tr>
-
-              {/* RE-ORDERS */}
-              <tr style={{ background: 'var(--bg-card)' }}>
-                <td colSpan={dates.length + 1} style={{ padding: '8px 16px', fontWeight: 'bold', fontSize: 12, color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>
-                  RE-ORDERS
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Orders <span style={{ float: 'right', color: 'var(--danger)' }}>Target</span></td>
-                <td colSpan={dates.length} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>Re-order targets dynamically calculated</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 16px', fontSize: 13, borderBottom: '1px solid var(--border)' }}># Orders <span style={{ float: 'right', color: 'var(--text-muted)' }}>Actual</span></td>
-                {dates.map((d, i) => {
-                  const actual = leads.filter(l => l.service_type?.toLowerCase().includes('re-order') && isSameDay(new Date(l.created_at), d)).length
-                  return <td key={i} style={{ textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{actual || '—'}</td>
-                })}
-              </tr>
-            </tbody>
-          </table>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Dashboard Overview</h1>
+          <p className={styles.pageSubtitle}>14-Day Performance Aggregate</p>
         </div>
+      </div>
+
+      <div className={styles.tabStrip}>
+        <button
+          className={`${styles.tab} ${activeTab === 'leads' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('leads')}
+        >
+          Leads Target Matrix
+          <span className={styles.tabCount}>{totalLeads}</span>
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'screening' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('screening')}
+        >
+          Screening Analytics
+          <span className={styles.tabCount}>{testTitles.length}</span>
+        </button>
+      </div>
+
+      <div className={styles.content}>
+        {activeTab === 'leads' && (
+          <div className="fade-in">
+            {/* Visual Charts */}
+            <div className={styles.chartContainer}>
+              <div className={styles.chartHeader}>
+                <div>
+                  <h3 className={styles.chartTitle}>Lead Origin Volume Tracker</h3>
+                  <p className={styles.chartSubtitle}>Cumulative entry points visualized against time</p>
+                </div>
+              </div>
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <BarChart data={leadChartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+                    <RechartsTooltip cursor={{ fill: 'var(--bg-secondary)' }} contentStyle={{ borderRadius: 8, border: '1px solid var(--border)' }} />
+                    <Bar dataKey="Meta" stackId="a" fill="var(--purple)" radius={[0, 0, 4, 4]} />
+                    <Bar dataKey="Website" stackId="a" fill="var(--success)" />
+                    <Bar dataKey="Referral" stackId="a" fill="var(--warning)" />
+                    <Bar dataKey="Other" stackId="a" fill="var(--border-hover)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Target Settings */}
+            <div className={styles.sectionTitle} style={{ justifyContent: 'space-between' }}>
+              <span>Database Targets & Projections</span>
+              {!isEditingTargets && (
+                <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 11 }} onClick={() => setIsEditingTargets(true)}>
+                  Configure Matrix
+                </button>
+              )}
+            </div>
+
+            {isEditingTargets && (
+              <div className={styles.settingsPanel}>
+                <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Operational Variables</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>These values generate the targets in the global dataset grid.</p>
+                
+                <div className={styles.settingsGrid}>
+                  <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>Total Active Clients</label>
+                    <input 
+                      type="number" 
+                      className={styles.settingInput} 
+                      value={configDraft['active_clients_count'] || ''}
+                      onChange={(e) => setConfigDraft({...configDraft, active_clients_count: Number(e.target.value)})}
+                    />
+                    <span className={styles.helpText}>Drives Referral/Re-order targets</span>
+                  </div>
+                  <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>Meta Daily Base</label>
+                    <input 
+                      type="number" 
+                      className={styles.settingInput} 
+                      value={configDraft['target_meta_daily'] || ''}
+                      onChange={(e) => setConfigDraft({...configDraft, target_meta_daily: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>Web Target (Sundays)</label>
+                    <input 
+                      type="number" 
+                      className={styles.settingInput} 
+                      value={configDraft['target_website_weekly'] || ''}
+                      onChange={(e) => setConfigDraft({...configDraft, target_website_weekly: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>Referral Multipier (%)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      className={styles.settingInput} 
+                      value={configDraft['target_referral_pct'] || ''}
+                      onChange={(e) => setConfigDraft({...configDraft, target_referral_pct: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className={styles.settingItem}>
+                    <label className={styles.settingLabel}>Re-Order Multipier (%)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      className={styles.settingInput} 
+                      value={configDraft['target_reorder_pct'] || ''}
+                      onChange={(e) => setConfigDraft({...configDraft, target_reorder_pct: Number(e.target.value)})}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.settingsActions}>
+                  <button className="btn btn-primary" onClick={handleSaveConfig}>Save to Database</button>
+                  <button className="btn btn-secondary" onClick={() => { setIsEditingTargets(false); setConfigDraft(config) }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Matrix Sheet */}
+            <div className={styles.spreadsheetWrap}>
+              <div className={styles.tableScroll}>
+                <table className={styles.spreadsheetTable}>
+                  <thead>
+                    <tr>
+                      <th colSpan={2} style={{ minWidth: 200, textAlign: 'left', paddingLeft: 16 }}>DASHBOARD TARGETS : MASTER</th>
+                      {dates.map((d, i) => (
+                        <th key={i}>{fmtDate(d)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* META */}
+                    <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>META (ADV)</th></tr>
+                    <tr className={styles.targetRow}>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td className={styles.targetCell}>Target</td>
+                      {dates.map((d, i) => {
+                        // Skip Sundays for Meta Targets (matching user spreadsheet)
+                        const showTarget = d.getDay() !== 0
+                        return (
+                          <td key={i}>{showTarget ? metaDaily : <span className={styles.empty}>—</span>}</td>
+                        )
+                      })}
+                    </tr>
+                    <tr>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                      {dates.map((d, i) => {
+                        const n = leads.filter(l => isMetaSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        const isSunday = d.getDay() === 0
+                        const isDeficit = n < metaDaily && !isSunday
+                        return (
+                          <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && n > 0 ? styles.deficit : ''} ${n >= metaDaily && !isSunday ? styles.surplus : ''}`}>
+                            {n > 0 ? n : <span className={styles.empty}>—</span>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* WEBSITE */}
+                    <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>WEBSITE</th></tr>
+                    <tr className={styles.targetRow}>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td className={styles.targetCell}>Target</td>
+                      {dates.map((d, i) => {
+                        // Only target on Sundays (matching user spreadsheet)
+                        const showTarget = d.getDay() === 0
+                        return (
+                          <td key={i}>{showTarget ? websiteWeekly : <span className={styles.empty}>—</span>}</td>
+                        )
+                      })}
+                    </tr>
+                    <tr>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                      {dates.map((d, i) => {
+                        const n = leads.filter(l => isWebsiteSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        return (
+                          <td key={i} className={isToday(d) ? styles.todayCol : ''}>
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* REFERRAL */}
+                    <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>REFERRAL</th></tr>
+                    <tr className={styles.targetRow}>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td className={styles.targetCell}>Target</td>
+                      <td colSpan={dates.length} style={{ textAlign: 'left', paddingLeft: 16 }}>
+                        Current active clients calculation (multiply this by {Math.round(refPct*100)}%): <strong>{projectedReferral} / month</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className={styles.rowLabel}># Leads</td>
+                      <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                      {dates.map((d, i) => {
+                        const n = leads.filter(l => l.source?.toLowerCase().includes('referral') && isSameDay(new Date(l.created_at), d)).length
+                        return (
+                          <td key={i} className={isToday(d) ? styles.todayCol : ''}>
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* RE-ORDERS */}
+                    <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>RE-ORDERS</th></tr>
+                    <tr className={styles.targetRow}>
+                      <td className={styles.rowLabel}># Orders</td>
+                      <td className={styles.targetCell}>Target</td>
+                      <td colSpan={dates.length} style={{ textAlign: 'left', paddingLeft: 16 }}>
+                        Current active clients calculation (multiply this by {Math.round(reorderPct*100)}%): <strong>{projectedReorder} / month</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className={styles.rowLabel}># Orders</td>
+                      <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                      {dates.map((d, i) => {
+                        const n = leads.filter(l => l.service_type?.toLowerCase().includes('re-order') && isSameDay(new Date(l.created_at), d)).length
+                        return (
+                          <td key={i} className={isToday(d) ? styles.todayCol : ''}>
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {activeTab === 'screening' && (
+          <div className="fade-in">
+             <div className={styles.sectionTitle}>
+              Screening Aggregate Analytics
+            </div>
+            
+            <div className={styles.chartContainer}>
+              <div style={{ width: '100%', height: 360 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={dates.map(d => ({
+                      date: fmtDate(d),
+                      Submitted: screeningStats.filter(s => s.day === fmtISO(d)).reduce((a, s) => a + s.submitted_count, 0),
+                      Passed: screeningStats.filter(s => s.day === fmtISO(d)).reduce((a, s) => a + s.passed_count, 0)
+                    }))} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorSubmit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)' }} />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="Submitted" stroke="var(--accent)" fillOpacity={1} fill="url(#colorSubmit)" />
+                    <Area type="monotone" dataKey="Passed" stroke="var(--success)" fillOpacity={1} fill="url(#colorPass)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className={styles.sectionTitle} style={{ marginTop: 40, marginBottom: 16 }}>
+              Screening Assessments Matrix
+            </div>
+
+            {testTitles.map((title) => {
+              const isExpanded = expandedTests[title]
+              const tTarget = screeningTargets.find(t => t.test_title === title) || { 
+                test_title: title, target_completed: 0, target_passed: 0, target_l1: 0, target_hires: 0, target_days: [1,2,3,4,5] 
+              }
+              const isEditing = editingTestTarget === title
+              
+              return (
+                <div key={title} style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-primary)' }}>
+                  <div 
+                    style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'var(--bg-secondary)', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', borderBottom: isExpanded ? '1px solid var(--border)' : 'none' }}
+                    onClick={() => handleToggleTest(title)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)' }}>
+                        <path d="m9 18 6-6-6-6"/>
+                      </svg>
+                      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{title}</h4>
+                    </div>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ padding: '4px 8px', fontSize: 12 }} 
+                      onClick={(e) => { e.stopPropagation(); setTestTargetDraft(tTarget); setEditingTestTarget(title); if (!isExpanded) handleToggleTest(title); }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Targets
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ padding: 16 }}>
+                      {isEditing && testTargetDraft && (
+                        <div className={styles.settingsPanel} style={{ marginBottom: 24 }}>
+                           <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Configure {title} Targets</h4>
+                           <div className={styles.settingsGrid}>
+                             <div className={styles.settingItem}>
+                               <label className={styles.settingLabel}>Completed Target / Day</label>
+                               <input type="number" className={styles.settingInput} value={testTargetDraft.target_completed} onChange={e => setTestTargetDraft({...testTargetDraft, target_completed: Number(e.target.value)})} />
+                             </div>
+                             <div className={styles.settingItem}>
+                               <label className={styles.settingLabel}>Passed Target / Day</label>
+                               <input type="number" className={styles.settingInput} value={testTargetDraft.target_passed} onChange={e => setTestTargetDraft({...testTargetDraft, target_passed: Number(e.target.value)})} />
+                             </div>
+                             <div className={styles.settingItem}>
+                               <label className={styles.settingLabel}>L1 Target / Day</label>
+                               <input type="number" className={styles.settingInput} value={testTargetDraft.target_l1} onChange={e => setTestTargetDraft({...testTargetDraft, target_l1: Number(e.target.value)})} />
+                             </div>
+                             <div className={styles.settingItem}>
+                               <label className={styles.settingLabel}>Hires Target / Day</label>
+                               <input type="number" className={styles.settingInput} value={testTargetDraft.target_hires} onChange={e => setTestTargetDraft({...testTargetDraft, target_hires: Number(e.target.value)})} />
+                             </div>
+                           </div>
+                           <div className={styles.settingsActions} style={{ marginTop: 16 }}>
+                              <button className="btn btn-primary" onClick={handleSaveTestTarget}>Save Target Settings</button>
+                              <button className="btn btn-secondary" onClick={() => setEditingTestTarget(null)}>Cancel</button>
+                           </div>
+                        </div>
+                      )}
+
+                      <div className={styles.tableWrap} style={{ margin: 0 }}>
+                        <div className={styles.tableScroll}>
+                           <table className={styles.spreadsheetTable}>
+                             <thead>
+                                <tr>
+                                  <th colSpan={2} style={{ minWidth: 200, textAlign: 'left', paddingLeft: 16, background: 'var(--bg-secondary)', borderBottom: '2px solid var(--border)' }}>DASHBOARD TARGETS : MASTER</th>
+                                  {dates.map((d, i) => (
+                                    <th key={i}>{fmtDate(d)}</th>
+                                  ))}
+                                </tr>
+                             </thead>
+                             <tbody>
+                               {/* COMPLETED SCREENINGS */}
+                               <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>COMPLETED SCREENINGS</th></tr>
+                               <tr className={styles.targetRow}>
+                                  <td className={styles.rowLabel}>Completed</td>
+                                  <td className={styles.targetCell}>Target</td>
+                                  {dates.map((d, i) => (
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_completed > 0 ? tTarget.target_completed : <span className={styles.empty}>—</span>}</td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className={styles.rowLabel}>Completed</td>
+                                  <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                                  {dates.map((d, i) => {
+                                     const actual = screeningStats.find(s => s.test_title === title && s.day === fmtISO(d))?.submitted_count || 0
+                                     const hasTarget = tTarget.target_days.includes(d.getDay()) && tTarget.target_completed > 0
+                                     const isDeficit = hasTarget && actual < tTarget.target_completed
+                                     return (
+                                        <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_completed ? styles.surplus : ''}`}>
+                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                        </td>
+                                     )
+                                  })}
+                               </tr>
+
+                               {/* PASSED */}
+                               <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>PASSED SCREENINGS</th></tr>
+                               <tr className={styles.targetRow}>
+                                  <td className={styles.rowLabel}>Passed</td>
+                                  <td className={styles.targetCell}>Target</td>
+                                  {dates.map((d, i) => (
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_passed > 0 ? tTarget.target_passed : <span className={styles.empty}>—</span>}</td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className={styles.rowLabel}>Passed</td>
+                                  <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                                  {dates.map((d, i) => {
+                                     const actual = screeningStats.find(s => s.test_title === title && s.day === fmtISO(d))?.passed_count || 0
+                                     const hasTarget = tTarget.target_days.includes(d.getDay()) && tTarget.target_passed > 0
+                                     const isDeficit = hasTarget && actual < tTarget.target_passed
+                                     return (
+                                        <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_passed ? styles.surplus : ''}`}>
+                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                        </td>
+                                     )
+                                  })}
+                               </tr>
+
+                               {/* FAILED */}
+                               <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>FAILED SCREENINGS</th></tr>
+                               <tr className={styles.targetRow}>
+                                  <td className={styles.rowLabel}>Failed</td>
+                                  <td className={styles.targetCell}>Target</td>
+                                  {dates.map((d, i) => (
+                                    <td key={i}><span className={styles.empty}>—</span></td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className={styles.rowLabel}>Failed</td>
+                                  <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                                  {dates.map((d, i) => {
+                                     const actual = screeningStats.find(s => s.test_title === title && s.day === fmtISO(d))?.failed_count || 0
+                                     // Fails have no target, we just display actual. We color them danger if they are high, maybe, but sticking to neutral layout for now
+                                     return (
+                                        <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${actual > 0 ? styles.deficit : ''}`}>
+                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                        </td>
+                                     )
+                                  })}
+                               </tr>
+
+                               {/* L1 INTERVIEWS */}
+                               <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>L1 INTERVIEWS (Manual Entry)</th></tr>
+                               <tr className={styles.targetRow}>
+                                  <td className={styles.rowLabel}>Interviewed</td>
+                                  <td className={styles.targetCell}>Target</td>
+                                  {dates.map((d, i) => (
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_l1 > 0 ? tTarget.target_l1 : <span className={styles.empty}>—</span>}</td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className={styles.rowLabel}>Interviewed</td>
+                                  <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                                  {dates.map((d, i) => {
+                                     const dayISO = fmtISO(d)
+                                     const rec = screeningManualActuals.find(a => a.test_title === title && a.day === dayISO)
+                                     const actual = rec?.l1_actual || 0
+                                     const hasTarget = tTarget.target_days.includes(d.getDay()) && tTarget.target_l1 > 0
+                                     const isDeficit = hasTarget && actual < tTarget.target_l1
+                                     return (
+                                        <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_l1 ? styles.surplus : ''}`} style={{ padding: 4, minWidth: 60 }}>
+                                           <input 
+                                              type="number" 
+                                              className={styles.settingInput} 
+                                              style={{ width: '100%', height: 32, padding: 4, textAlign: 'center', background: 'transparent', border: '1px solid transparent', boxShadow: 'none' }} 
+                                              defaultValue={actual || ''} 
+                                              placeholder="—"
+                                              onBlur={(e) => handleManualActualUpdate(title, dayISO, 'l1_actual', e.target.value)}
+                                           />
+                                        </td>
+                                     )
+                                  })}
+                               </tr>
+
+                               {/* HIRES */}
+                               <tr><th colSpan={dates.length + 2} className={styles.rowGroup}>HIRES (Manual Entry)</th></tr>
+                               <tr className={styles.targetRow}>
+                                  <td className={styles.rowLabel}>Hires</td>
+                                  <td className={styles.targetCell}>Target</td>
+                                  {dates.map((d, i) => (
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_hires > 0 ? tTarget.target_hires : <span className={styles.empty}>—</span>}</td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className={styles.rowLabel}>Hires</td>
+                                  <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
+                                  {dates.map((d, i) => {
+                                     const dayISO = fmtISO(d)
+                                     const rec = screeningManualActuals.find(a => a.test_title === title && a.day === dayISO)
+                                     const actual = rec?.hires_actual || 0
+                                     const hasTarget = tTarget.target_days.includes(d.getDay()) && tTarget.target_hires > 0
+                                     const isDeficit = hasTarget && actual < tTarget.target_hires
+                                     return (
+                                        <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_hires ? styles.surplus : ''}`} style={{ padding: 4, minWidth: 60 }}>
+                                           <input 
+                                              type="number" 
+                                              className={styles.settingInput} 
+                                              style={{ width: '100%', height: 32, padding: 4, textAlign: 'center', background: 'transparent', border: '1px solid transparent', boxShadow: 'none' }} 
+                                              defaultValue={actual || ''} 
+                                              placeholder="—"
+                                              onBlur={(e) => handleManualActualUpdate(title, dayISO, 'hires_actual', e.target.value)}
+                                           />
+                                        </td>
+                                     )
+                                  })}
+                               </tr>
+
+                             </tbody>
+                           </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+          </div>
+        )}
       </div>
     </div>
   )

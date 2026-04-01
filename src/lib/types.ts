@@ -4,6 +4,7 @@ export interface OrderLead {
   contact_email: string | null
   contact_phone: string | null
   source: string | null
+  referral_id: string | null
   assigned_to: string | null
   deal_value: number
   current_stage: string
