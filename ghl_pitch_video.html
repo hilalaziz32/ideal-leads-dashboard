@@ -1,0 +1,207 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary)}
+.header{padding:20px 24px 16px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
+.client-name{font-size:11px;font-weight:500;letter-spacing:0.08em;color:var(--color-text-secondary);text-transform:uppercase;margin-bottom:4px}
+.project-title{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.proposal-badge{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:#0C447C}
+.proposal-dot{width:7px;height:7px;border-radius:50%;background:#378ADD}
+.date-label{font-size:11px;color:var(--color-text-tertiary)}
+
+.progress-strip{display:flex;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary)}
+.prog-step{flex:1;padding:10px 8px;text-align:center;font-size:11px;font-weight:500;color:var(--color-text-tertiary);cursor:pointer;border-right:0.5px solid var(--color-border-tertiary);transition:background 0.15s,color 0.15s;position:relative}
+.prog-step:last-child{border-right:none}
+.prog-step.done{color:#0F6E56}
+.prog-step.done::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:#1D9E75}
+.prog-step.active{color:#0C447C;background:var(--color-background-primary)}
+.prog-step.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:#378ADD}
+
+.body{display:grid;grid-template-columns:1fr;min-height:520px}
+
+.ui-col{padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--color-background-tertiary)}
+.section-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;transition:outline 0.2s}
+.section-card.active-highlight{outline:2px solid #378ADD;outline-offset:0}
+.card-head{padding:9px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
+.card-head-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.pill{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.pill-blue{background:#E6F1FB;color:#0C447C}
+.pill-green{background:#E0F4ED;color:#0F6E56}
+.pill-amber{background:#FAEEDA;color:#633806}
+.pill-gray{background:#F1EFE8;color:#444441}
+.card-body{padding:12px 14px}
+.field{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px}
+.field:last-child{border-bottom:none}
+.fk{color:var(--color-text-secondary)}
+.fv{font-weight:500;color:var(--color-text-primary)}
+.fv-blue{color:#185FA5;font-weight:500}
+
+.pipe-row{display:flex;border-radius:var(--border-radius-md);overflow:hidden;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px}
+.pipe-cell{flex:1;padding:7px 4px;text-align:center;font-size:10px;font-weight:500;border-right:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.pipe-cell:last-child{border-right:none}
+.pipe-cell.planned{background:#E6F1FB;color:#0C447C}
+
+.status-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;color:var(--color-text-primary)}
+.status-item:last-child{border-bottom:none}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sdot-blue{background:#378ADD}
+.sdot-green{background:#1D9E75}
+
+.tpl-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px}
+.tpl-row:last-child{border-bottom:none}
+
+.plan-box{font-size:12px;line-height:1.8;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.plan-box span{color:var(--color-text-primary);font-weight:500}
+
+.nav-row{padding:12px 16px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:8px;background:var(--color-background-primary)}
+.nav-btn{flex:1;padding:8px;font-size:12px;font-weight:500;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;transition:background 0.12s}
+.nav-btn:hover{background:var(--color-background-secondary)}
+.nav-btn:disabled{opacity:0.3;cursor:default}
+.nav-btn.primary{background:#042C53;color:#E6F1FB;border-color:#042C53}
+.nav-btn.primary:hover{background:#0C447C}
+</style>
+
+<div class="header">
+  <div>
+    <div class="client-name">Setup Proposal — GHL</div>
+    <div class="project-title">Melbourne Bond Clean</div>
+  </div>
+  <div class="header-right">
+    <div class="proposal-badge"><div class="proposal-dot"></div>Everything included in your setup</div>
+    <div class="date-label" id="date-label"></div>
+  </div>
+</div>
+
+<div class="progress-strip" id="progress-strip"></div>
+
+<div class="body">
+  <div class="ui-col" id="ui-col">
+
+    <div class="section-card" id="card-webhook">
+      <div class="card-head">
+        <div class="card-head-title">Elementor → GHL webhook</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="field"><span class="fk">Trigger</span><span class="fv">Form submission on your site</span></div>
+        <div class="field"><span class="fk">Fields mapped</span><span class="fv">Name, Phone, Email, Address, Service</span></div>
+        <div class="field"><span class="fk">Result</span><span class="fv-blue">Contact auto-created in GHL</span></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="card-pipeline">
+      <div class="card-head">
+        <div class="card-head-title">Pipeline — Bond Clean Jobs</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="pipe-row">
+          <div class="pipe-cell planned">New Lead</div>
+          <div class="pipe-cell">Quoted</div>
+          <div class="pipe-cell">Confirmed</div>
+          <div class="pipe-cell">In Progress</div>
+          <div class="pipe-cell">Completed</div>
+          <div class="pipe-cell">Follow-up</div>
+        </div>
+        <div class="field"><span class="fk">Custom stages</span><span class="fv">6 — tailored to your workflow</span></div>
+        <div class="field"><span class="fk">New leads enter at</span><span class="fv-blue">New Lead (automatic)</span></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="card-email">
+      <div class="card-head">
+        <div class="card-head-title">Zoho email — SMTP + IMAP</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="status-item"><div class="sdot sdot-green"></div>SMTP — GHL sends from your Zoho address</div>
+        <div class="status-item"><div class="sdot sdot-green"></div>IMAP — client replies land inside GHL</div>
+        <div class="status-item"><div class="sdot sdot-green"></div>No more switching between tools</div>
+      </div>
+    </div>
+
+    <div class="section-card" id="card-sms">
+      <div class="card-head">
+        <div class="card-head-title">SMS — GHL phone number</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="field"><span class="fk">Number</span><span class="fv">Local AU number via GHL</span></div>
+        <div class="field"><span class="fk">Auto-reply on new lead</span><span class="fv-blue">Instant — within seconds</span></div>
+        <div class="field"><span class="fk">Two-way</span><span class="fv">Reply to clients from inside GHL</span></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="card-templates">
+      <div class="card-head">
+        <div class="card-head-title">Email templates</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="tpl-row"><span>Lead confirmation</span><span class="pill pill-blue">Ready to send</span></div>
+        <div class="tpl-row"><span>Quote follow-up</span><span class="pill pill-blue">Ready to send</span></div>
+        <div class="tpl-row"><span>Job complete + review request</span><span class="pill pill-blue">Ready to send</span></div>
+      </div>
+    </div>
+
+    <div class="section-card" id="card-test">
+      <div class="card-head">
+        <div class="card-head-title">End-to-end testing</div>
+        <span class="pill pill-green">Included</span>
+      </div>
+      <div class="card-body">
+        <div class="plan-box">
+          Before handover, a <span>full live test</span> is run with you on a screen share — submit a real form, watch the contact appear, confirm the <span>SMS fires</span>, the <span>email sends via Zoho</span>, and the reply lands back in GHL. You see everything working before the job is closed.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="nav-row">
+  <button class="nav-btn" id="prev-btn" onclick="nav(-1)">← Back</button>
+  <button class="nav-btn primary" id="next-btn" onclick="nav(1)">Next →</button>
+</div>
+
+<script>
+const steps=[
+  {tab:"Intro",    highlight:null},
+  {tab:"Webhook",  highlight:"card-webhook"},
+  {tab:"Pipeline", highlight:"card-pipeline"},
+  {tab:"Email",    highlight:"card-email"},
+  {tab:"SMS",      highlight:"card-sms"},
+  {tab:"Templates",highlight:"card-templates"},
+  {tab:"Testing",  highlight:"card-test"}
+];
+
+let cur=0;
+
+function render(){
+  const strip=document.getElementById('progress-strip');
+  strip.innerHTML='';
+  steps.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='prog-step'+(i<cur?' done':i===cur?' active':'');
+    d.textContent=s.tab;
+    d.onclick=()=>{cur=i;render();};
+    strip.appendChild(d);
+  });
+  document.querySelectorAll('.section-card').forEach(el=>el.classList.remove('active-highlight'));
+  const s=steps[cur];
+  if(s.highlight){
+    const el=document.getElementById(s.highlight);
+    if(el){el.classList.add('active-highlight');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  }
+  document.getElementById('prev-btn').disabled=cur===0;
+  const nb=document.getElementById('next-btn');
+  nb.textContent=cur===steps.length-1?'Done':'Next →';
+  nb.disabled=cur===steps.length-1;
+}
+
+function nav(d){cur=Math.max(0,Math.min(steps.length-1,cur+d));render();}
+
+document.getElementById('date-label').textContent=new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
+render();
+</script>

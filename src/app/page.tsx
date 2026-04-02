@@ -414,7 +414,7 @@ export default function MetricsDashboard() {
                         const isDeficit = n < metaDaily && !isSunday
                         return (
                           <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && n > 0 ? styles.deficit : ''} ${n >= metaDaily && !isSunday ? styles.surplus : ''}`}>
-                            {n > 0 ? n : <span className={styles.empty}>—</span>}
+                            {n > 0 ? n : <span className={styles.empty}>0</span>}
                           </td>
                         )
                       })}
@@ -440,7 +440,7 @@ export default function MetricsDashboard() {
                         const n = leads.filter(l => isWebsiteSource(l.source) && isSameDay(new Date(l.created_at), d)).length
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
                           </td>
                         )
                       })}
@@ -462,7 +462,7 @@ export default function MetricsDashboard() {
                         const n = leads.filter(l => l.source?.toLowerCase().includes('referral') && isSameDay(new Date(l.created_at), d)).length
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
                           </td>
                         )
                       })}
@@ -484,7 +484,7 @@ export default function MetricsDashboard() {
                         const n = leads.filter(l => l.service_type?.toLowerCase().includes('re-order') && isSameDay(new Date(l.created_at), d)).length
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>—</span>}
+                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
                           </td>
                         )
                       })}
@@ -626,7 +626,7 @@ export default function MetricsDashboard() {
                                      const isDeficit = hasTarget && actual < tTarget.target_completed
                                      return (
                                         <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_completed ? styles.surplus : ''}`}>
-                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                           {actual > 0 ? actual : <span className={styles.empty}>0</span>}
                                         </td>
                                      )
                                   })}
@@ -650,7 +650,7 @@ export default function MetricsDashboard() {
                                      const isDeficit = hasTarget && actual < tTarget.target_passed
                                      return (
                                         <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && actual > 0 ? styles.deficit : ''} ${hasTarget && actual >= tTarget.target_passed ? styles.surplus : ''}`}>
-                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                           {actual > 0 ? actual : <span className={styles.empty}>0</span>}
                                         </td>
                                      )
                                   })}
@@ -673,7 +673,7 @@ export default function MetricsDashboard() {
                                      // Fails have no target, we just display actual. We color them danger if they are high, maybe, but sticking to neutral layout for now
                                      return (
                                         <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${actual > 0 ? styles.deficit : ''}`}>
-                                           {actual > 0 ? actual : <span className={styles.empty}>—</span>}
+                                           {actual > 0 ? actual : <span className={styles.empty}>0</span>}
                                         </td>
                                      )
                                   })}
