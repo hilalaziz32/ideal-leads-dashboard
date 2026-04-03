@@ -94,6 +94,7 @@ export default function MetricsDashboard() {
   const [loading, setLoading] = useState(true)
   const [isEditingTargets, setIsEditingTargets] = useState(false)
   const [configDraft, setConfigDraft] = useState<Record<string, number>>({})
+  const [leadsManualActuals, setLeadsManualActuals] = useState<any[]>([])
   const [screeningManualActuals, setScreeningManualActuals] = useState<ScreeningManualActual[]>([])
   const [screeningTargets, setScreeningTargets] = useState<ScreeningTestTarget[]>([])
   const [expandedTests, setExpandedTests] = useState<Record<string, boolean>>({})
@@ -105,12 +106,13 @@ export default function MetricsDashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [leadsRes, screeningRes, configRes, manualRes, targetsRes] = await Promise.all([
+      const [leadsRes, screeningRes, configRes, manualRes, targetsRes, leadsManualRes] = await Promise.all([
         fetch('/api/leads').then(r => r.json()),
         fetch('/api/screening-stats').then(r => r.json()),
         fetch('/api/config').then(r => r.json()),
         fetch('/api/screening/actuals').then(r => r.json()),
-        fetch('/api/screening/targets').then(r => r.json())
+        fetch('/api/screening/targets').then(r => r.json()),
+        fetch('/api/leads-actuals').then(r => r.json())
       ])
       if (Array.isArray(leadsRes)) setLeads(leadsRes)
       if (Array.isArray(screeningRes)) setScreeningStats(screeningRes)
@@ -120,6 +122,7 @@ export default function MetricsDashboard() {
       }
       if (Array.isArray(manualRes)) setScreeningManualActuals(manualRes)
       if (Array.isArray(targetsRes)) setScreeningTargets(targetsRes)
+      if (Array.isArray(leadsManualRes)) setLeadsManualActuals(leadsManualRes)
     } finally {
       setLoading(false)
     }
@@ -138,6 +141,29 @@ export default function MetricsDashboard() {
         body: JSON.stringify({ updates: configDraft })
       })
       setConfig(configDraft) // Optimistic update
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleLeadsManualActualChange = async (dayString: string, metricType: string, val: string) => {
+    const value = val === '' ? null : parseInt(val, 10)
+    
+    setLeadsManualActuals((prev: any[]) => {
+      const exists = prev.find(x => x.day === dayString && x.metric_type === metricType)
+      if (exists) {
+        return prev.map(x => (x.day === dayString && x.metric_type === metricType) ? { ...x, value } : x)
+      } else {
+        return [...prev, { day: dayString, metric_type: metricType, value }]
+      }
+    })
+
+    try {
+      await fetch('/api/leads-actuals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day: dayString, metric_type: metricType, value })
+      })
     } catch (err) {
       console.error(err)
     }
@@ -409,12 +435,20 @@ export default function MetricsDashboard() {
                       <td className={styles.rowLabel}># Leads</td>
                       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
                       {dates.map((d, i) => {
-                        const n = leads.filter(l => isMetaSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        const defaultN = leads.filter(l => isMetaSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        const override = leadsManualActuals.find(x => x.day === fmtISO(d) && x.metric_type === 'all')?.value
+                        const n = override !== undefined && override !== null ? override : defaultN
                         const isSunday = d.getDay() === 0
                         const isDeficit = n < metaDaily && !isSunday
                         return (
                           <td key={i} className={`${isToday(d) ? styles.todayCol : ''} ${isDeficit && n > 0 ? styles.deficit : ''} ${n >= metaDaily && !isSunday ? styles.surplus : ''}`}>
-                            {n > 0 ? n : <span className={styles.empty}>0</span>}
+                             <input 
+                                className={styles.inlineInput} 
+                                type="number" 
+                                placeholder={defaultN.toString()} 
+                                value={override !== undefined && override !== null ? override : ''}
+                                onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'all', e.target.value)}
+                             />
                           </td>
                         )
                       })}
@@ -437,10 +471,18 @@ export default function MetricsDashboard() {
                       <td className={styles.rowLabel}># Leads</td>
                       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
                       {dates.map((d, i) => {
-                        const n = leads.filter(l => isWebsiteSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        const defaultN = leads.filter(l => isWebsiteSource(l.source) && isSameDay(new Date(l.created_at), d)).length
+                        const override = leadsManualActuals.find(x => x.day === fmtISO(d) && x.metric_type === 'website')?.value
+                        const n = override !== undefined && override !== null ? override : defaultN
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
+                             <input 
+                                className={styles.inlineInput} 
+                                type="number" 
+                                placeholder={defaultN.toString()} 
+                                value={override !== undefined && override !== null ? override : ''}
+                                onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'website', e.target.value)}
+                             />
                           </td>
                         )
                       })}
@@ -459,10 +501,18 @@ export default function MetricsDashboard() {
                       <td className={styles.rowLabel}># Leads</td>
                       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
                       {dates.map((d, i) => {
-                        const n = leads.filter(l => l.source?.toLowerCase().includes('referral') && isSameDay(new Date(l.created_at), d)).length
+                        const defaultN = leads.filter(l => l.source?.toLowerCase().includes('referral') && isSameDay(new Date(l.created_at), d)).length
+                        const override = leadsManualActuals.find(x => x.day === fmtISO(d) && x.metric_type === 'referral')?.value
+                        const n = override !== undefined && override !== null ? override : defaultN
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
+                             <input 
+                                className={styles.inlineInput} 
+                                type="number" 
+                                placeholder={defaultN.toString()} 
+                                value={override !== undefined && override !== null ? override : ''}
+                                onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'referral', e.target.value)}
+                             />
                           </td>
                         )
                       })}
@@ -481,10 +531,18 @@ export default function MetricsDashboard() {
                       <td className={styles.rowLabel}># Orders</td>
                       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>Actual</td>
                       {dates.map((d, i) => {
-                        const n = leads.filter(l => l.service_type?.toLowerCase().includes('re-order') && isSameDay(new Date(l.created_at), d)).length
+                        const defaultN = leads.filter(l => l.service_type?.toLowerCase().includes('re-order') && isSameDay(new Date(l.created_at), d)).length
+                        const override = leadsManualActuals.find(x => x.day === fmtISO(d) && x.metric_type === 'reorder')?.value
+                        const n = override !== undefined && override !== null ? override : defaultN
                         return (
                           <td key={i} className={isToday(d) ? styles.todayCol : ''}>
-                            {n > 0 ? <strong className={styles.actualCell}>{n}</strong> : <span className={styles.empty}>0</span>}
+                             <input 
+                                className={styles.inlineInput} 
+                                type="number" 
+                                placeholder={defaultN.toString()} 
+                                value={override !== undefined && override !== null ? override : ''}
+                                onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'reorder', e.target.value)}
+                             />
                           </td>
                         )
                       })}
