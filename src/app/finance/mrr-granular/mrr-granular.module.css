@@ -1,0 +1,177 @@
+.container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.leftPanel {
+  width: 320px;
+  min-width: 320px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.panelSection {
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panelTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.inputGroup {
+  margin-bottom: 16px;
+}
+
+.inputGroup:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+.calcValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rightPanel {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.table th:first-child {
+  text-align: left;
+  left: 0;
+  z-index: 20;
+}
+
+.monthHeaderRow th {
+  background: var(--bg-secondary);
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-top: 2px solid var(--border);
+}
+
+.table td {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: right;
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.table td:first-child {
+  text-align: left;
+  font-weight: 500;
+  position: sticky;
+  left: 0;
+  background: var(--bg-primary);
+  z-index: 5;
+}
+
+.cellInput {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: right;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 6px;
+  color: var(--text-primary);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.cellInput:hover {
+  border-color: rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.1);
+}
+
+.cellInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+.rowToday {
+  background: rgba(78, 144, 237, 0.1);
+}
+
+.rowToday td:first-child {
+  background: rgba(78, 144, 237, 0.1);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.rowGreen {
+  background: rgba(46, 204, 113, 0.1);
+}
+.rowGreen td:first-child {
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.rowRed {
+  background: rgba(231, 76, 60, 0.1);
+}
+.rowRed td:first-child {
+  background: rgba(231, 76, 60, 0.1);
+}

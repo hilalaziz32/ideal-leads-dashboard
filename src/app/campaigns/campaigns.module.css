@@ -1,0 +1,46 @@
+.container {
+  padding: 32px;
+  max-width: 1800px; /* Wider for massive grid */
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  letter-spacing: -0.02em;
+}
+
+.navTabs {
+  display: flex;
+  gap: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.navLink {
+  padding: 0 0 12px 0;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+
+.navLink:hover {
+  color: var(--text-primary);
+}
+
+.navLinkActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.main {
+  width: 100%;
+}

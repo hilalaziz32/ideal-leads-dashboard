@@ -1,0 +1,117 @@
+.container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  margin-bottom: 32px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1200px;
+}
+
+.table th {
+  background: var(--bg-secondary);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table th:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  z-index: 10;
+  background: var(--bg-card);
+  min-width: 250px;
+}
+
+.monthHeader th {
+  background: #1e3a8a;
+  color: white;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.2);
+}
+
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: right;
+  font-size: 14px;
+}
+
+.table td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--bg-primary);
+  text-align: left;
+  font-weight: 500;
+  z-index: 5;
+  color: var(--text-primary);
+}
+
+.personHeader td {
+  background: var(--bg-secondary) !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  cursor: pointer;
+}
+
+.kpiLabel {
+  padding-left: 24px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.subRowLabel {
+  padding-left: 48px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.totalCol {
+  background: rgba(0,0,0,0.02);
+  font-weight: 600;
+}
+
+.cellInput {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: right;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px;
+  color: var(--text-primary);
+  border-radius: 4px;
+}
+
+.cellInput:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.cellInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+.goodCell {
+  background: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.badCell {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  font-weight: 600;
+}

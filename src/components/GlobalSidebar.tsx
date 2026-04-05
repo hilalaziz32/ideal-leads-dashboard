@@ -35,6 +35,38 @@ export default function GlobalSidebar() {
           </svg>
           Pipeline
         </Link>
+        
+        <Link 
+          href="/turnaround" 
+          className={`${styles.navItem} ${pathname.startsWith('/turnaround') ? styles.navItemActive : ''}`}
+        >
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Order Turnaround
+        </Link>
+        
+        <Link 
+          href="/campaigns" 
+          className={`${styles.navItem} ${pathname.startsWith('/campaigns') ? styles.navItemActive : ''}`}
+        >
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          Campaign Tracker
+        </Link>
+        
+        <Link 
+          href="/finance" 
+          className={`${styles.navItem} ${pathname.startsWith('/finance') ? styles.navItemActive : ''}`}
+        >
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          Finance Dashboard
+        </Link>
       </div>
 
       <div className={styles.title} style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)' }}>Others</div>

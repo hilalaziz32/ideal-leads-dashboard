@@ -228,12 +228,19 @@ export default function LeadDetailPage() {
         <div className={styles.grid}>
           {/* Info card */}
           <div className="card">
-            <h2 className={styles.sectionTitle}>Contact Info</h2>
+            <h2 className={styles.sectionTitle}>Lead / Order Details</h2>
             <div className={styles.infoGrid}>
+              <div className={styles.infoItem}><span className={styles.infoLabel}>Name</span><span>{lead.contact_name ?? '—'}</span></div>
+              <div className={styles.infoItem}><span className={styles.infoLabel}>Email</span><span style={{ wordBreak: 'break-all' }}>{lead.contact_email ? <a href={`mailto:${lead.contact_email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{lead.contact_email}</a> : '—'}</span></div>
+              <div className={styles.infoItem}><span className={styles.infoLabel}>Phone</span><span>{lead.contact_phone ? <a href={`tel:${lead.contact_phone}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{lead.contact_phone}</a> : '—'}</span></div>
+              
+              <div className={styles.infoItem}><span className={styles.infoLabel}>Service</span><span>{lead.service_type ?? '—'}</span></div>
+              <div className={styles.infoItem}><span className={styles.infoLabel}>Deal Value</span><span>{lead.deal_value ? formatCurrency(lead.deal_value) : '—'}</span></div>
+              
               <div className={styles.infoItem}><span className={styles.infoLabel}>Source</span><span>{lead.source ?? '—'}</span></div>
               <div className={styles.infoItem}><span className={styles.infoLabel}>Assigned To</span><span>{lead.assigned_to ?? '—'}</span></div>
               <div className={styles.infoItem}><span className={styles.infoLabel}>Executive</span><span>{lead.executive ?? '—'}</span></div>
-              <div className={styles.infoItem}><span className={styles.infoLabel}>Service</span><span>{lead.service_type ?? '—'}</span></div>
+              
               <div className={styles.infoItem}><span className={styles.infoLabel}>Created</span><span>{formatDate(lead.created_at)}</span></div>
               <div className={styles.infoItem}><span className={styles.infoLabel}>Updated</span><span>{formatDate(lead.updated_at)}</span></div>
             </div>

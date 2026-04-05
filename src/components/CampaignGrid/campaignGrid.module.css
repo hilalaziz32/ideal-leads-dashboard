@@ -1,0 +1,199 @@
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  text-align: left;
+}
+
+/* Floating left columns */
+.fixedLeft {
+  position: sticky;
+  left: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+
+.fixedLeft2 {
+  position: sticky;
+  left: 120px; /* Offset by previous column width */
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+
+.fixedLeft3 {
+  position: sticky;
+  left: 320px; /* Offset by previous two columns */
+  background: var(--bg-secondary);
+  z-index: 10;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
+
+.table th, .table td {
+  padding: 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Specific z-index to handle crossing top + left */
+.table thead .fixedLeft, 
+.table thead .fixedLeft2, 
+.table thead .fixedLeft3 {
+  z-index: 15;
+}
+
+/* Column Widths */
+.colRunning { width: 120px; min-width: 120px; }
+.colRole { width: 200px; min-width: 200px; }
+.colMetric { width: 200px; min-width: 200px; }
+.colDate { width: 65px; min-width: 65px; text-align: center; }
+
+/* Filter Bar UI */
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: var(--bg-card);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.quickFilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.filterBtn:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+.customDateFilter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+}
+
+.dateInput {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+/* Role Header Banner Row */
+.roleHeaderRow td {
+  background: #1e3a8a !important; /* Dark blue */
+  color: white;
+  font-weight: 600;
+  border-bottom: none;
+}
+
+/* Input Styles */
+.cellInput {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: center;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 4px;
+  cursor: text;
+  color: var(--text-primary);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.cellInput:hover, .cellInput:focus {
+  border-color: var(--accent);
+  background: white;
+  outline: none;
+}
+
+/* Native dark borders for the grid cells */
+.table td.monthGroup {
+  border-top: 2px solid var(--border);
+}
+
+.monthHeader {
+  text-align: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+
+.addBtn {
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin-top: 4px;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+}
+
+.addBtn:hover {
+  background: rgba(0,0,0,0.03);
+  color: var(--text-primary);
+}
+
+.selectNode {
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+/* Running Chip Styles */
+.chipYes { background: rgba(11, 130, 59, 0.1); color: #0b823b; border: 1px solid rgba(11, 130, 59, 0.2); }
+.chipNo { background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); }
