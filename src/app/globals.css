@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* Pristine Corporate Light Theme */
@@ -59,6 +59,7 @@
   
   --font-base: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono-display: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 *, *::before, *::after {
@@ -211,6 +212,41 @@ a:hover { color: var(--accent-dark); }
 .input::placeholder { color: var(--text-muted); }
 
 textarea.input { resize: vertical; min-height: 100px; }
+
+/* Remove number input spinners globally */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+/* Excel-style cell input — invisible at rest, focused on click/tab */
+.cell-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-family: var(--font-mono-display);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: right;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+  display: block;
+}
+.cell-input:hover {
+  border-color: var(--border-hover);
+  background: rgba(11, 79, 220, 0.03);
+}
+.cell-input:focus {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(11, 79, 220, 0.15);
+}
+.cell-input::placeholder {
+  color: var(--border-hover);
+  font-weight: 400;
+}
 
 /* Page Layout */
 .page-container {

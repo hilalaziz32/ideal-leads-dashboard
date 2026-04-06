@@ -110,9 +110,16 @@ export default function DynamicKPIsPage() {
   if (loading && !data) return <div style={{ padding: 32 }}>Loading Dynamic Tracker...</div>
 
   return (
-    <div style={{ padding: 32, height: '100%', overflowY: 'auto', background: 'var(--bg-primary)' }}>
+    <div style={{ padding: 32, height: '100%', overflowY: 'auto', background: 'var(--bg-secondary)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Dynamic KPI Tracker ({year})</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Dynamic KPI Tracker</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <button onClick={() => setYear(y => y - 1)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--text-muted)' }}>‹</button>
+            <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono-display)', color: 'var(--text-primary)' }}>{year}</span>
+            <button onClick={() => setYear(y => y + 1)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, color: 'var(--text-muted)' }}>›</button>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button 
             onClick={handleAddPerson}

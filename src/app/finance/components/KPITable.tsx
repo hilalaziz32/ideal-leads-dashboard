@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import styles from './kpi-table.module.css'
 
 interface KPITableProps {
@@ -12,20 +12,36 @@ interface KPITableProps {
   allowEditTargets?: boolean
 }
 
-const CellInput = ({ initialVal, handleUpsert, field }: any) => {
+const CellInput = ({ initialVal, handleUpsert, onTabNext, onTabPrev, inputRef }: any) => {
   const [val, setVal] = useState(initialVal || '')
   useEffect(() => { setVal(initialVal || '') }, [initialVal])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.currentTarget.blur()
+      onTabNext?.()
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      if (e.shiftKey) onTabPrev?.()
+      else onTabNext?.()
+    }
+  }
+
   return (
     <input 
+      ref={inputRef}
       className={styles.cellInput}
       value={val}
+      placeholder="—"
+      type="number"
       onChange={e => setVal(e.target.value)}
       onBlur={e => {
         if (e.target.value !== (initialVal || '').toString()) {
           handleUpsert(e.target.value)
         }
       }}
-      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      onKeyDown={handleKeyDown}
     />
   )
 }
@@ -34,7 +50,7 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   // Compute weeks grouped by month
-  const { months, weeksByMonth } = useMemo(() => {
+  const { months, weeksByMonth, flatWeeks } = useMemo(() => {
     let d = new Date(year, 0, 1)
     while (d.getDay() !== 1) d.setDate(d.getDate() + 1) // First Monday
 
@@ -50,13 +66,37 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
     }
 
     const dict: Record<string, any[]> = {}
+    const flat: string[] = []
     wk.forEach(w => {
       if (!dict[w.mName]) dict[w.mName] = []
       dict[w.mName].push(w)
+      flat.push(w.start_date)
     })
     
-    return { months: Object.keys(dict), weeksByMonth: dict }
+    return { months: Object.keys(dict), weeksByMonth: dict, flatWeeks: flat }
   }, [year])
+
+  // Cell registry for Tab/Enter keyboard navigation (keyed by kpiId:type:date)
+  const cellRegistry = useRef<Map<string, HTMLInputElement>>(new Map())
+  const registerCell = useCallback((kpiId: string, type: 'actual' | 'target', dateStr: string) => (el: HTMLInputElement | null) => {
+    const key = `${kpiId}:${type}:${dateStr}`
+    if (el) cellRegistry.current.set(key, el)
+    else cellRegistry.current.delete(key)
+  }, [])
+
+  const navNextCell = (kpiId: string, type: 'actual' | 'target', currentDate: string) => {
+    const idx = flatWeeks.indexOf(currentDate)
+    if (idx < flatWeeks.length - 1) {
+      cellRegistry.current.get(`${kpiId}:${type}:${flatWeeks[idx + 1]}`)?.focus()
+    }
+  }
+
+  const navPrevCell = (kpiId: string, type: 'actual' | 'target', currentDate: string) => {
+    const idx = flatWeeks.indexOf(currentDate)
+    if (idx > 0) {
+      cellRegistry.current.get(`${kpiId}:${type}:${flatWeeks[idx - 1]}`)?.focus()
+    }
+  }
 
   const togglePerson = (pid: string) => {
     setExpanded(prev => ({ ...prev, [pid]: !prev[pid] }))
@@ -101,7 +141,7 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
             return (
               <React.Fragment key={person.id}>
                 <tr className={styles.personHeader} onClick={() => togglePerson(person.id)}>
-                  <td colSpan={1 + months.reduce((acc, m) => acc + weeksByMonth[m].length + 1, 0)}>
+                  <td className={styles.fullWidthRow} colSpan={1 + months.reduce((acc, m) => acc + weeksByMonth[m].length + 1, 0)}>
                     {isExp ? '▼' : '▶'} {person.name}
                   </td>
                 </tr>
@@ -109,14 +149,16 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
                   <React.Fragment key={kpi.id}>
                     {/* KPI NAME ROW (Empty data cells, just a label wrapper if needed, but spec says: "KPIs are listed as rows, each with two sub-rows: Actual and Weekly Target") */}
                     <tr>
-                      <td className={styles.kpiLabel} colSpan={1 + months.reduce((acc, m) => acc + weeksByMonth[m].length + 1, 0)} style={{ background: 'rgba(0,0,0,0.01)', fontWeight: 600 }}>
+                      <td className={`${styles.kpiLabel} ${styles.fullWidthRow}`} colSpan={1 + months.reduce((acc, m) => acc + weeksByMonth[m].length + 1, 0)} style={{ background: 'rgba(0,0,0,0.01)', fontWeight: 600 }}>
                         {kpi.name}
                       </td>
                     </tr>
                     
                     {/* ACTUAL ROW */}
                     <tr>
-                      <td className={styles.subRowLabel}>Actual</td>
+                      <td className={styles.stickyFirstCol}>
+                        <span className={styles.subRowLabel}>Actual</span>
+                      </td>
                       {months.map(m => {
                         let mTotalAct = 0
                         return (
@@ -147,6 +189,9 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
                                   <CellInput 
                                     initialVal={act}
                                     handleUpsert={(val: string) => onUpsertActual(kpi.id, w.start_date, val)}
+                                    inputRef={registerCell(kpi.id, 'actual', w.start_date)}
+                                    onTabNext={() => navNextCell(kpi.id, 'actual', w.start_date)}
+                                    onTabPrev={() => navPrevCell(kpi.id, 'actual', w.start_date)}
                                   />
                                 </td>
                               )
@@ -159,7 +204,9 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
 
                     {/* TARGET ROW */}
                     <tr>
-                      <td className={styles.subRowLabel}>Target</td>
+                      <td className={styles.stickyFirstCol}>
+                        <span className={styles.subRowLabel}>Target</span>
+                      </td>
                       {months.map(m => {
                         let mTotalTgt = 0
                         return (
@@ -174,6 +221,9 @@ export default function KPITable({ year, people, kpis, onUpsertTarget, onUpsertA
                                     <CellInput 
                                       initialVal={tgt}
                                       handleUpsert={(val: string) => onUpsertTarget(kpi.id, w.start_date, val)}
+                                      inputRef={registerCell(kpi.id, 'target', w.start_date)}
+                                      onTabNext={() => navNextCell(kpi.id, 'target', w.start_date)}
+                                      onTabPrev={() => navPrevCell(kpi.id, 'target', w.start_date)}
                                     />
                                   ) : (
                                     <span style={{ color: 'var(--text-muted)' }}>{tgt}</span>

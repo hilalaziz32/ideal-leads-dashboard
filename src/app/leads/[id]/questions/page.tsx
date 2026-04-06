@@ -44,7 +44,6 @@ export default function QuestionsPage() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['customer']))
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load existing answers from lead
   useEffect(() => {
     fetch(`/api/leads/${id}`)
       .then((r) => r.json())
@@ -56,6 +55,18 @@ export default function QuestionsPage() {
       .catch(() => setError('Failed to load lead'))
       .finally(() => setLoading(false))
   }, [id])
+
+  // Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        handleSaveNow()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [answers])
 
   const saveAnswers = useCallback(async (currentAnswers: AnswerMap) => {
     setSaving(true)
@@ -112,9 +123,10 @@ export default function QuestionsPage() {
           </p>
         </div>
         <div className={styles.headerActions}>
+          <span className={styles.shortcutHint}>⌘ S</span>
           {lastSaved && (
             <span className={styles.savedAt}>
-              ✓ Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
           {saving && <span className={styles.savingLabel}>Saving…</span>}
@@ -169,11 +181,11 @@ export default function QuestionsPage() {
                         key={q.id}
                         className={`${styles.qRow} ${hasAnswer ? styles.qRowAnswered : ''}`}
                       >
-                        <div className={styles.qMeta}>
-                          <span className={styles.qId}>{q.id}</span>
-                          {q.required && <span className={styles.qRequired}>Required</span>}
-                        </div>
                         <div className={styles.qContent}>
+                          <div className={styles.qHeaderRow}>
+                            <span className={styles.qId}>{q.id}</span>
+                            {q.required && <span className={styles.qRequired}>Required</span>}
+                          </div>
                           <label className={styles.qLabel} htmlFor={`q-${q.id}`}>
                             {q.label}
                           </label>
@@ -184,7 +196,7 @@ export default function QuestionsPage() {
                             value={answers[q.id] ?? ''}
                             onChange={(e) => handleChange(q.id, e.target.value)}
                             placeholder="Josh's notes / answer…"
-                            rows={2}
+                            rows={1}
                           />
                         </div>
                         <div className={styles.qStatus}>

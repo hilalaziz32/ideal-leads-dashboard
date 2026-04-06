@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { LeadWithOverdue } from '@/lib/types'
 import styles from './dashboard.module.css'
 import {
@@ -102,6 +102,34 @@ export default function MetricsDashboard() {
   const [testTargetDraft, setTestTargetDraft] = useState<ScreeningTestTarget | null>(null)
 
   const dates = useMemo(() => generateDates(14), [])
+
+  // Cell registry for Tab/Enter keyboard nav on the Leads actuals grid
+  // Key format: "metric_type:date_index"
+  const cellRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const registerCell = useCallback((metricType: string, dateIdx: number) => (el: HTMLInputElement | null) => {
+    const key = `${metricType}:${dateIdx}`
+    if (el) cellRefs.current.set(key, el)
+    else cellRefs.current.delete(key)
+  }, [])
+
+  const METRIC_ROWS = ['all', 'website', 'referral', 'reorder'] as const
+  const TOTAL_DATE_COUNT = 14
+
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, metricType: string, dateIdx: number) => {
+    if (e.key !== 'Tab' && e.key !== 'Enter') return
+    e.preventDefault()
+    const direction = e.shiftKey ? -1 : 1
+    const metrics = METRIC_ROWS as unknown as string[]
+    const mIdx = metrics.indexOf(metricType)
+    // Flat index: row * 14 + col
+    const flat = mIdx * TOTAL_DATE_COUNT + dateIdx
+    const nextFlat = flat + direction
+    const nextM = Math.floor(nextFlat / TOTAL_DATE_COUNT)
+    const nextD = nextFlat % TOTAL_DATE_COUNT
+    if (nextM < 0 || nextM >= metrics.length) return
+    if (nextD < 0 || nextD >= TOTAL_DATE_COUNT) return
+    cellRefs.current.get(`${metrics[nextM]}:${nextD}`)?.focus()
+  }, [])
 
   const fetchData = async () => {
     setLoading(true)
@@ -308,7 +336,25 @@ export default function MetricsDashboard() {
       <div className={styles.content}>
         {activeTab === 'leads' && (
           <div className="fade-in">
-            {/* Visual Charts */}
+            {/* KPI Summary Cards */}
+            <div className={styles.kpiGrid}>
+              <div className={styles.kpiCard}>
+                <div className={styles.kpiLabel}>Total Leads (14d)</div>
+                <div className={styles.kpiValue}>{totalLeads}</div>
+              </div>
+              <div className={styles.kpiCard}>
+                <div className={styles.kpiLabel}>Meta Leads</div>
+                <div className={styles.kpiValue} style={{ color: 'var(--purple)' }}>{metaLeads}</div>
+              </div>
+              <div className={styles.kpiCard}>
+                <div className={styles.kpiLabel}>Website Leads</div>
+                <div className={styles.kpiValue} style={{ color: 'var(--success)' }}>{websiteLeads}</div>
+              </div>
+              <div className={styles.kpiCard}>
+                <div className={styles.kpiLabel}>Referrals</div>
+                <div className={styles.kpiValue} style={{ color: 'var(--warning)' }}>{referralLeads}</div>
+              </div>
+            </div>
             <div className={styles.chartContainer}>
               <div className={styles.chartHeader}>
                 <div>
@@ -448,6 +494,8 @@ export default function MetricsDashboard() {
                                 placeholder={defaultN.toString()} 
                                 value={override !== undefined && override !== null ? override : ''}
                                 onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'all', e.target.value)}
+                                ref={registerCell('all', i)}
+                                onKeyDown={(e) => handleCellKeyDown(e, 'all', i)}
                              />
                           </td>
                         )
@@ -482,6 +530,8 @@ export default function MetricsDashboard() {
                                 placeholder={defaultN.toString()} 
                                 value={override !== undefined && override !== null ? override : ''}
                                 onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'website', e.target.value)}
+                                ref={registerCell('website', i)}
+                                onKeyDown={(e) => handleCellKeyDown(e, 'website', i)}
                              />
                           </td>
                         )
@@ -512,6 +562,8 @@ export default function MetricsDashboard() {
                                 placeholder={defaultN.toString()} 
                                 value={override !== undefined && override !== null ? override : ''}
                                 onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'referral', e.target.value)}
+                                ref={registerCell('referral', i)}
+                                onKeyDown={(e) => handleCellKeyDown(e, 'referral', i)}
                              />
                           </td>
                         )
@@ -542,6 +594,8 @@ export default function MetricsDashboard() {
                                 placeholder={defaultN.toString()} 
                                 value={override !== undefined && override !== null ? override : ''}
                                 onChange={(e) => handleLeadsManualActualChange(fmtISO(d), 'reorder', e.target.value)}
+                                ref={registerCell('reorder', i)}
+                                onKeyDown={(e) => handleCellKeyDown(e, 'reorder', i)}
                              />
                           </td>
                         )

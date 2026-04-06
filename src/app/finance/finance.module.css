@@ -1,49 +1,85 @@
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
 
+/* ── Top bar ── */
 .header {
-  padding: 24px 32px 0 32px;
-  background: var(--bg-card);
+  flex-shrink: 0;
+  padding: 0 32px;
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 52px;
 }
 
 .title {
-  font-size: 24px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 24px;
-  letter-spacing: -0.02em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
+/* Separator pipe */
+.title::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin-left: 24px;
+  vertical-align: middle;
+}
+
+/* ── Tab row ── */
 .navTabs {
   display: flex;
-  gap: 32px;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
 }
 
 .navLink {
-  padding: 12px 0;
-  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
   font-weight: 500;
-  font-size: 14px;
+  color: var(--text-muted);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
+  transition: background 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .navLink:hover {
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
 .navLinkActive {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  background: var(--accent);
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.navLinkActive:hover {
+  background: var(--accent-dark);
+  color: #fff;
 }
 
 .main {
   flex: 1;
   padding: 0;
   overflow: hidden;
+  min-height: 0;
 }
