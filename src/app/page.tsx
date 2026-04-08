@@ -134,13 +134,14 @@ export default function MetricsDashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [leadsRes, screeningRes, configRes, manualRes, targetsRes, leadsManualRes] = await Promise.all([
+      const [leadsRes, screeningRes, configRes, manualRes, targetsRes, leadsManualRes, turnaroundRes] = await Promise.all([
         fetch('/api/leads').then(r => r.json()),
         fetch('/api/screening-stats').then(r => r.json()),
         fetch('/api/config').then(r => r.json()),
         fetch('/api/screening/actuals').then(r => r.json()),
         fetch('/api/screening/targets').then(r => r.json()),
-        fetch('/api/leads-actuals').then(r => r.json())
+        fetch('/api/leads-actuals').then(r => r.json()),
+        fetch('/api/turnaround/roles').then(r => r.json())
       ])
       if (Array.isArray(leadsRes)) setLeads(leadsRes)
       if (Array.isArray(screeningRes)) setScreeningStats(screeningRes)
@@ -151,6 +152,29 @@ export default function MetricsDashboard() {
       if (Array.isArray(manualRes)) setScreeningManualActuals(manualRes)
       if (Array.isArray(targetsRes)) setScreeningTargets(targetsRes)
       if (Array.isArray(leadsManualRes)) setLeadsManualActuals(leadsManualRes)
+      if (Array.isArray(turnaroundRes)) {
+         // Create dummy screening stats so that active roles appear as tests even without Zapier data
+         const activeRoles = turnaroundRes.filter((r: any) => r.status === 'Active' && r.role && r.role.trim() !== '')
+         setScreeningStats(prev => {
+            const copy = [...prev]
+            activeRoles.forEach((r: any) => {
+               const exists = copy.find(s => s.test_title === r.role)
+               if (!exists) {
+                  // Push a dummy 0-count row for today to force the title into the testTitles memo
+                  copy.push({
+                     day: new Date().toISOString().split('T')[0],
+                     job_name: r.role,
+                     test_title: r.role,
+                     submitted_count: 0,
+                     passed_count: 0,
+                     failed_count: 0,
+                     disqualified_count: 0
+                  })
+               }
+            })
+            return copy
+         })
+      }
     } finally {
       setLoading(false)
     }

@@ -27,6 +27,57 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .eq('id', id)
 
     if (error) throw error
+
+    // Sync to Campaign Tracker ONLY if role name is updated and valid
+    if (body.role && typeof body.role === 'string' && body.role.trim() !== '') {
+      // Check if it already exists in campaign_tracker_roles
+      const { data: existingCampRole } = await supabase
+        .from('campaign_tracker_roles')
+        .select('*')
+        .eq('turnaround_role_id', id)
+        .single()
+
+      if (existingCampRole) {
+        // Just update name
+        await supabase
+          .from('campaign_tracker_roles')
+          .update({ role_name: body.role })
+          .eq('turnaround_role_id', id)
+      } else {
+        // Insert it to tab_type = 'Live'
+        const { data: newCampRole, error: insErr } = await supabase
+          .from('campaign_tracker_roles')
+          .insert({
+            tab_type: 'Live',
+            role_name: body.role,
+            turnaround_role_id: id,
+            start_date: body.start_date || new Date().toISOString().split('T')[0]
+          })
+          .select().single()
+
+        if (!insErr && newCampRole) {
+          // Add default sources/metrics
+          const sources = ['Recruiter Outbound', 'Indeed', 'LinkedIn']
+          const metrics = ['Completed Screening (daily)', 'Passed Screenings (daily)']
+
+          for (let i = 0; i < sources.length; i++) {
+            const { data: src } = await supabase
+              .from('campaign_tracker_sources')
+              .insert({ role_id: newCampRole.id, source_name: sources[i], sort_order: i })
+              .select().single()
+
+            if (src) {
+              const metricsInserts = metrics.map((m, idx) => ({
+                source_id: src.id,
+                metric_name: m,
+                sort_order: idx
+              }))
+              await supabase.from('campaign_tracker_metrics').insert(metricsInserts)
+            }
+          }
+        }
+      }
+    }
     return NextResponse.json({ success: true })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

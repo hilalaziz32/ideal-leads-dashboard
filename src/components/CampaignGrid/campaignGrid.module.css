@@ -4,8 +4,7 @@
   overflow-y: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 4px;
   position: relative;
 }
 
@@ -27,30 +26,36 @@
 
 .fixedLeft2 {
   position: sticky;
-  left: 120px; /* Offset by previous column width */
+  left: 100px;
   background: var(--bg-secondary);
   z-index: 10;
 }
 
 .fixedLeft3 {
   position: sticky;
-  left: 320px; /* Offset by previous two columns */
+  left: 300px;
   background: var(--bg-secondary);
   z-index: 10;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+  border-right: 2px solid var(--border) !important;
 }
 
 .table th, .table td {
-  padding: 8px;
+  padding: 0; /* Tight padding for airtable look */
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  height: 32px;
+}
+
+.table .fixedLeft, .table .fixedLeft2, .table .fixedLeft3 {
+  padding: 0 12px;
 }
 
 .table th {
   background: var(--bg-secondary);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
+  padding: 6px 12px;
 }
 
 .table thead th {
@@ -59,7 +64,6 @@
   z-index: 5;
 }
 
-/* Specific z-index to handle crossing top + left */
 .table thead .fixedLeft, 
 .table thead .fixedLeft2, 
 .table thead .fixedLeft3 {
@@ -67,10 +71,10 @@
 }
 
 /* Column Widths */
-.colRunning { width: 120px; min-width: 120px; }
+.colRunning { width: 100px; min-width: 100px; }
 .colRole { width: 200px; min-width: 200px; }
-.colMetric { width: 200px; min-width: 200px; }
-.colDate { width: 65px; min-width: 65px; text-align: center; }
+.colMetric { width: 220px; min-width: 220px; }
+.colDate { width: 70px; min-width: 70px; text-align: center; }
 
 /* Filter Bar UI */
 .filterBar {
@@ -78,23 +82,22 @@
   align-items: center;
   gap: 24px;
   background: var(--bg-card);
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
 }
 
 .quickFilters {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .filterBtn {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 10px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -103,19 +106,19 @@
 }
 
 .filterBtn:hover {
-  background: rgba(0,0,0,0.03);
+  background: var(--bg-secondary);
 }
 
 .customDateFilter {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-left: 24px;
+  gap: 8px;
+  padding-left: 20px;
   border-left: 1px solid var(--border);
 }
 
 .dateInput {
-  padding: 4px 8px;
+  padding: 2px 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
@@ -125,75 +128,70 @@
 
 /* Role Header Banner Row */
 .roleHeaderRow td {
-  background: #1e3a8a !important; /* Dark blue */
-  color: white;
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary);
   font-weight: 600;
-  border-bottom: none;
+  border-bottom: 2px solid var(--border);
+  border-top: 2px solid var(--border);
 }
 
-/* Input Styles */
+/* Cell Inputs */
 .cellInput {
   width: 100%;
-  border: 1px solid transparent;
+  height: 100%;
+  min-height: 32px;
+  border: none;
   background: transparent;
   text-align: center;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 13px;
-  padding: 4px;
+  padding: 0 4px;
   cursor: text;
   color: var(--text-primary);
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.cellInput:hover, .cellInput:focus {
-  border-color: var(--accent);
-  background: white;
   outline: none;
+  transition: box-shadow 0.1s;
 }
 
-/* Native dark borders for the grid cells */
+.cellInput:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.cellInput:focus {
+  background: var(--bg-primary);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Month rows */
 .table td.monthGroup {
   border-top: 2px solid var(--border);
 }
 
 .monthHeader {
   text-align: center;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 11px;
-}
-
-.addBtn {
-  background: none;
-  border: 1px dashed var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  margin-top: 4px;
-  transition: all 0.2s;
-  width: 100%;
-  text-align: left;
-}
-
-.addBtn:hover {
-  background: rgba(0,0,0,0.03);
-  color: var(--text-primary);
-}
-
-.selectNode {
-  width: 100%;
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
+  font-weight: 600;
   font-size: 12px;
+  color: var(--text-secondary);
 }
 
-/* Running Chip Styles */
-.chipYes { background: rgba(11, 130, 59, 0.1); color: #0b823b; border: 1px solid rgba(11, 130, 59, 0.2); }
-.chipNo { background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); }
+/* Select Pills (Airtable Tag Style) */
+.selectNode {
+  width: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 2px 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  outline: none;
+}
+
+.chipYes { background: rgba(11, 130, 59, 0.15); color: #0b823b; }
+.chipNo { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+.chipNeutral { background: var(--border); color: var(--text-primary); }
+
+.cellPadding {
+  padding: 4px 12px !important;
+}

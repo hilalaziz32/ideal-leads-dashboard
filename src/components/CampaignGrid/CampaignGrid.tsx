@@ -262,25 +262,24 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
               <React.Fragment key={role.id}>
                 {/* 1. ROLE BANNER ROW */}
                 <tr className={styles.roleHeaderRow}>
-                  <td className={styles.fixedLeft} style={{ background: '#1e3a8a' }}>
+                  <td className={`${styles.fixedLeft} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <select 
-                        className={styles.selectNode} 
-                        style={{ width: 'auto', background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
+                        className={`${styles.selectNode} ${role.running_status === 'Yes' ? styles.chipYes : styles.chipNo}`}
                         value={role.running_status || 'No'}
                         onChange={(e) => updateField('campaign_tracker_roles', role.id, { running_status: e.target.value })}
                       >
-                        <option style={{color:'black'}} value="Yes">Yes</option>
-                        <option style={{color:'black'}} value="No">No</option>
+                         <option value="Yes">Yes</option>
+                         <option value="No">No</option>
                       </select>
                     </div>
                   </td>
-                  <td className={styles.fixedLeft2} style={{ background: '#1e3a8a' }}>
+                  <td className={`${styles.fixedLeft2} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <span style={{ fontWeight: 600 }}>{role.role_name}</span>
                       <button 
                         onClick={() => handleDeleteRole(role.id, role.role_name)}
-                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', borderRadius: 4, cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
                         title="Delete Role"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -291,12 +290,12 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                         defaultValue={role.annotation || ''}
                         onBlur={(e) => updateField('campaign_tracker_roles', role.id, { annotation: e.target.value })}
                         placeholder="Add annotation..."
-                        style={{ display: 'block', marginTop: 8, fontSize: 11, background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '4px 6px', borderRadius: 4, width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, fontSize: 11, background: 'var(--bg-primary)', border: `1px solid var(--border)`, color: 'var(--text-primary)', padding: '2px 6px', borderRadius: 4, width: '100%' }}
                       />
                     )}
                   </td>
-                  <td className={styles.fixedLeft3} style={{ background: '#1e3a8a' }}></td>
-                  <td colSpan={dateArray.length} style={{ background: '#1e3a8a' }}></td>
+                  <td className={`${styles.fixedLeft3} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}></td>
+                  <td colSpan={dateArray.length} style={{ background: 'var(--bg-secondary)' }}></td>
                 </tr>
 
                 {/* 2. SOURCES LOOP */}
