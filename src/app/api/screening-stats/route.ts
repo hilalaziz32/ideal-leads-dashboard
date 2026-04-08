@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const { data, error } = await supabase
     .from('daily_job_link_submission_stats_table')
-    .select('day, job_name, test_title, submitted_count, passed_count, failed_count, disqualified_count')
+    .select('day, job_name, test_title, test_link_id, submitted_count, passed_count, failed_count, disqualified_count')
     .order('day', { ascending: false })
     .limit(300)
 
@@ -14,30 +14,45 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // SILENT AUTO-SYNC: If Zapier sends a new test_title, auto-create tracker rows for it so the user can manually fill info!
+  // SYNC: We await this now to ensure consistency, but it's optimized for bulk
   if (data && data.length > 0) {
-    // Fire and forget (don't await) to avoid blocking the GET request
-    syncTrackingRows(data).catch(console.error)
+    await syncTrackingRows(data)
   }
 
   return NextResponse.json(data ?? [])
 }
 
 async function syncTrackingRows(screeningData: any[]) {
-  // 1. Get unique test titles from Zapier data
-  const uniqueTitles = Array.from(new Set(screeningData.map(s => s.test_title).filter(Boolean)))
+  // 1. Get unique tests from Zapier data using test_link_id
+  const uniqueTests = Array.from(
+    new Map(
+        screeningData
+            .filter(s => s.test_link_id)
+            .map(s => [s.test_link_id, s])
+    ).values()
+  )
   
-  // 2. Fetch existing turnaround roles
-  const { data: existingTRoles } = await supabase.from('order_turnaround_roles').select('id, role')
-  const existingNames = new Set((existingTRoles || []).map(r => r.role))
+  if (uniqueTests.length === 0) return
 
-  // 3. For each missing title, create it in order_turnaround_roles AND campaign_tracker_roles
-  for (const title of uniqueTitles) {
-    if (!existingNames.has(title)) {
+  // 2. Fetch existing turnaround roles by test_link_id
+  const { data: existingTRoles } = await supabase
+    .from('order_turnaround_roles')
+    .select('test_link_id')
+    .in('test_link_id', uniqueTests.map(t => t.test_link_id))
+
+  const existingIds = new Set((existingTRoles || []).map(r => r.test_link_id))
+
+  // 3. For each missing test_link_id, create it
+  for (const test of uniqueTests) {
+    if (!existingIds.has(test.test_link_id)) {
        // A: Insert into Turnaround (Live Tracker)
        const { data: newTRole, error: err1 } = await supabase
          .from('order_turnaround_roles')
-         .insert({ role: title, status: 'Active' })
+         .insert({ 
+            role: test.test_title || test.job_name, 
+            status: 'Active',
+            test_link_id: test.test_link_id
+         })
          .select().single()
          
        if (newTRole) {
@@ -46,7 +61,7 @@ async function syncTrackingRows(screeningData: any[]) {
            .from('campaign_tracker_roles')
            .insert({
              tab_type: 'Live',
-             role_name: title,
+             role_name: test.test_title || test.job_name,
              turnaround_role_id: newTRole.id,
              start_date: new Date().toISOString().split('T')[0]
            })

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   /* Pristine Corporate Light Theme */
@@ -57,7 +57,18 @@
 
   --transition: 0.2s cubic-bezier(0.2, 0, 0, 1);
   
-  --font-base: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
+  /* Airtable-Inspired High Density System */
+  --at-blue: #2d7ff9;
+  --at-blue-light: rgba(45, 127, 249, 0.1);
+  --at-gray-bg: #f5f5f5;
+  --at-border: #dee1e5;
+  --at-text-main: #333333;
+  --at-text-muted: #666666;
+  --at-cell-hover: #f1f3f5;
+  --at-cell-focus: #2d7ff9;
+
+  /* Typography */
+  --font-base: 'Inter', -apple-system, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-mono-display: 'JetBrains Mono', ui-monospace, monospace;
 }

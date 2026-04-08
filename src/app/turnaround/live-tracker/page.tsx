@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import styles from './tracker.module.css'
+import AirtableBadge from '@/components/AirtableBadge'
 
 export default function LiveRoleTracker() {
   const [roles, setRoles] = useState<any[]>([])
@@ -37,7 +38,7 @@ export default function LiveRoleTracker() {
       setRecruiters(recRes.data || [])
       
       const stg = new Set<string>()
-      stageConfigRes.data?.forEach(s => stg.add(s.label))
+      stageConfigRes.data?.forEach((s: any) => stg.add(s.label))
       if (Array.isArray(customStagesRes)) customStagesRes.forEach(s => stg.add(s.label))
       setStages(Array.from(stg))
 
@@ -85,42 +86,26 @@ export default function LiveRoleTracker() {
     }
   }
 
-  const handleAddCustomStage = async () => {
-    const stage = prompt("Enter new custom pipeline stage:")
-    if (!stage) return
-    await fetch('/api/turnaround/stages', { method: 'POST', body: JSON.stringify({ label: stage })})
-    fetchData()
-  }
-
-  const handleAddCustomRecStage = async () => {
-    const stage = prompt("Enter new custom recruitment stage:")
-    if (!stage) return
-    await fetch('/api/turnaround/recruitment-stages', { method: 'POST', body: JSON.stringify({ label: stage })})
-    fetchData()
-  }
-
-  const handleAddCustomStatus = async () => {
-    const status = prompt("Enter new custom status:")
-    if (!status) return
-    await fetch('/api/turnaround/statuses', { method: 'POST', body: JSON.stringify({ label: status })})
-    fetchData()
-  }
-
   const calculateDays = (target: string | null) => {
     if (!target) return null
     const targetDate = new Date(target)
     if (isNaN(targetDate.getTime())) return null
     const today = new Date()
-    // Reset times to compare just days
     targetDate.setHours(0,0,0,0)
     today.setHours(0,0,0,0)
     
     const diffTime = targetDate.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
-  if (loading) return <div>Loading...</div>
+  const getStatusColor = (status: string): any => {
+    if (status === 'Placed') return 'blue'
+    if (status === 'Active') return 'green'
+    if (status === 'Paused') return 'yellow'
+    return 'gray'
+  }
+
+  if (loading) return <div className="loading-spinner"><div className="spinner" />Loading Data...</div>
 
   const totalActive = roles.filter(r => r.status === 'Active').length
   const totalPlaced = roles.filter(r => r.status === 'Placed').length
@@ -131,22 +116,22 @@ export default function LiveRoleTracker() {
 
   return (
     <div className={styles.container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, fontWeight: 600 }}>Live Tracker</h2>
-        <button onClick={handleAddRow} className={styles.actionButton}>+ Add Row</button>
+      <div className={styles.headerRow}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#111' }}>Trackers</h2>
+        <button onClick={handleAddRow} className={styles.actionButton}>+ Add Role</button>
       </div>
 
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Current Active Roles</div>
+          <div className={styles.kpiLabel}>Active Roles</div>
           <div className={styles.kpiValue}>{totalActive}</div>
         </div>
         <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Total Placed</div>
+          <div className={styles.kpiLabel}>Placed</div>
           <div className={`${styles.kpiValue} ${styles.kpiSuccess}`}>{totalPlaced}</div>
         </div>
         <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Overdue Targets</div>
+          <div className={styles.kpiLabel}>Overdue</div>
           <div className={totalOverdue > 0 ? `${styles.kpiValue} ${styles.kpiAlert}` : styles.kpiValue}>{totalOverdue}</div>
         </div>
       </div>
@@ -155,41 +140,36 @@ export default function LiveRoleTracker() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Client / Lead Name</th>
-              <th>Role</th>
-              <th>Start Date</th>
-              <th>Pipeline Stage <span style={{cursor:'pointer', color:'var(--accent)', marginLeft: 8}} onClick={handleAddCustomStage}>+</span></th>
-              <th>Recruitment Stage <span style={{cursor:'pointer', color:'var(--accent)', marginLeft: 8}} onClick={handleAddCustomRecStage}>+</span></th>
-              <th>Target Placement</th>
-              <th>Days to Placement</th>
-              <th>Placed On</th>
-              <th>Recruiter</th>
-              <th>Placed By</th>
-              <th>Status <span style={{cursor:'pointer', color:'var(--accent)', marginLeft: 8}} onClick={handleAddCustomStatus}>+</span></th>
+              <th style={{ width: 250 }}>Client / Lead Name</th>
+              <th style={{ width: 180 }}>Role</th>
+              <th style={{ width: 130 }}>Start Date</th>
+              <th style={{ width: 180 }}>Pipeline Stage</th>
+              <th style={{ width: 180 }}>Recruitment Stage</th>
+              <th style={{ width: 130 }}>Target Placement</th>
+              <th style={{ width: 100 }}>Days Left</th>
+              <th style={{ width: 130 }}>Placed On</th>
+              <th style={{ width: 180 }}>Recruiter</th>
+              <th style={{ width: 150 }}>Placed By</th>
+              <th style={{ width: 140 }}>Status</th>
             </tr>
           </thead>
           <tbody>
             {roles.map(r => {
               const daysToPlacement = calculateDays(r.target_placement_date)
-              
-              const isSurplus = daysToPlacement !== null && daysToPlacement >= 0
-              const isDeficit = daysToPlacement !== null && daysToPlacement < 0
+              const isOverdue = daysToPlacement !== null && daysToPlacement < 0 && r.status !== 'Placed'
 
               return (
-                <tr key={r.id} className={isDeficit && r.status !== 'Placed' ? styles.rowAlert : ''}>
-                  {/* Name column mixing select and manual input */}
-                  <td style={{ minWidth: 250 }}>
+                <tr key={r.id}>
+                  {/* Client Name Cell */}
+                  <td>
                     {!r.lead_id && !r.manual_client_name ? (
                       <select 
                         className={styles.select}
-                        value={r.lead_id || ''}
+                        value=""
                         onChange={(e) => {
                           const val = e.target.value
-                          if (val === 'manual') {
-                            handleUpdate(r.id, 'manual_client_name', 'New Client')
-                          } else {
-                            handleUpdate(r.id, 'lead_id', val)
-                          }
+                          if (val === 'manual') handleUpdate(r.id, 'manual_client_name', 'New Client')
+                          else handleUpdate(r.id, 'lead_id', val)
                         }}
                       >
                         <option value="">Select Lead...</option>
@@ -199,9 +179,9 @@ export default function LiveRoleTracker() {
                         ))}
                       </select>
                     ) : r.lead_id ? (
-                      <div style={{ padding: '8px 12px', fontWeight: 500 }}>
-                        {r.order_leads?.contact_name || 'Linked Lead'}
-                        <button style={{marginLeft:8, fontSize:10, cursor:'pointer', border:'none', background:'none', color:'red'}} onClick={() => handleUpdate(r.id, 'lead_id', null)}>x</button>
+                      <div className={styles.badgeCell} style={{ justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 500 }}>{r.order_leads?.contact_name || 'Linked Lead'}</span>
+                        <button style={{ fontSize: 10, cursor: 'pointer', border: 'none', background: 'none', color: '#999' }} onClick={() => handleUpdate(r.id, 'lead_id', null)}>✕</button>
                       </div>
                     ) : (
                       <input 
@@ -213,16 +193,17 @@ export default function LiveRoleTracker() {
                     )}
                   </td>
 
+                  {/* Role Title */}
                   <td>
                     <input 
                       className={styles.input}
                       value={r.role || ''}
                       onChange={(e) => handleUpdate(r.id, 'role', e.target.value)}
                       placeholder="Role Title"
-                      style={{ minWidth: 150 }}
                     />
                   </td>
 
+                  {/* Start Date */}
                   <td>
                     <input 
                       type="date"
@@ -232,28 +213,31 @@ export default function LiveRoleTracker() {
                     />
                   </td>
 
+                  {/* Pipeline Stage */}
                   <td>
                     <select 
                       className={styles.select}
                       value={r.pipeline_stage || ''}
                       onChange={(e) => handleUpdate(r.id, 'pipeline_stage', e.target.value)}
                     >
-                      <option value="">Select Pipeline...</option>
+                      <option value="">Select...</option>
                       {stages.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
 
+                  {/* Recruitment Stage */}
                   <td>
                     <select 
                       className={styles.select}
                       value={r.recruitment_stage || ''}
                       onChange={(e) => handleUpdate(r.id, 'recruitment_stage', e.target.value)}
                     >
-                      <option value="">Select Recruitment...</option>
-                      {recStages.map(s => <option key={s.id} value={s.label}>{s.label}</option>)}
+                      <option value="">Select...</option>
+                      {recStages.map((s: any) => <option key={s.id} value={s.label}>{s.label}</option>)}
                     </select>
                   </td>
 
+                  {/* Target Placement */}
                   <td>
                     <input 
                       type="date"
@@ -263,15 +247,14 @@ export default function LiveRoleTracker() {
                     />
                   </td>
 
+                  {/* Days Left */}
                   <td style={{ textAlign: 'center' }}>
-                    {daysToPlacement !== null ? (
-                      <span className={isSurplus ? styles.surplus : styles.deficit}>
-                        {isDeficit && r.status !== 'Placed' && <span style={{marginRight: 4}}>🚨</span>}
-                        {daysToPlacement > 0 ? `+${daysToPlacement}` : daysToPlacement}
-                      </span>
-                    ) : '-'}
+                    <div className={styles.centered} style={{ fontWeight: 600, color: isOverdue ? '#d12e2e' : 'inherit' }}>
+                      {daysToPlacement !== null ? (daysToPlacement > 0 ? `+${daysToPlacement}` : daysToPlacement) : '-'}
+                    </div>
                   </td>
 
+                  {/* Placed On */}
                   <td>
                     <input 
                       type="date"
@@ -281,6 +264,7 @@ export default function LiveRoleTracker() {
                     />
                   </td>
 
+                  {/* Recruiter */}
                   <td>
                     <select 
                       className={styles.select}
@@ -292,6 +276,7 @@ export default function LiveRoleTracker() {
                     </select>
                   </td>
 
+                  {/* Placed By */}
                   <td>
                     <input 
                       className={styles.input}
@@ -301,31 +286,30 @@ export default function LiveRoleTracker() {
                     />
                   </td>
 
+                  {/* Status */}
                   <td>
-                    <select 
-                      className={styles.select}
-                      value={r.status || ''}
-                      onChange={(e) => handleUpdate(r.id, 'status', e.target.value)}
-                      style={{ fontWeight: 600, color: r.status === 'Active' ? '#0b823b' : r.status === 'Placed' ? 'var(--accent)' : 'inherit' }}
-                    >
-                      <option value="">Status...</option>
-                      {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <div className={styles.badgeCell}>
+                      <AirtableBadge 
+                        label={r.status || 'Active'} 
+                        color={getStatusColor(r.status)} 
+                        style={{ width: '100%', justifyContent: 'center', cursor: 'pointer' }}
+                      />
+                      <select 
+                        className={styles.select} 
+                        style={{ position: 'absolute', opacity: 0, cursor: 'pointer' }}
+                        value={r.status || 'Active'}
+                        onChange={(e) => handleUpdate(r.id, 'status', e.target.value)}
+                      >
+                        {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value="Active">Active</option>
+                        <option value="Placed">Placed</option>
+                        <option value="Paused">Paused</option>
+                      </select>
+                    </div>
                   </td>
-
                 </tr>
               )
             })}
-            
-            {roles.length === 0 && (
-              <tr>
-                <td colSpan={10}>
-                  <div className={styles.emptyState}>
-                    No active roles tracked. Click "+ Add Row" to begin.
-                  </div>
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
