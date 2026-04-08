@@ -88,3 +88,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
+
+    const { error } = await supabase
+      .from('campaign_tracker_roles')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true })
+  } catch(err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

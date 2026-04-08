@@ -36,6 +36,7 @@ const CellInput = ({ metricId, dStr, initialVal, handleEntryUpsert }: any) => {
 
 export default function CampaignGrid({ tabType }: CampaignGridProps) {
   const [roles, setRoles] = useState<any[]>([])
+  const [screeningStats, setScreeningStats] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,9 +46,15 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/campaigns?tab_type=${tabType}`)
+      const [res, statsRes] = await Promise.all([
+        fetch(`/api/campaigns?tab_type=${tabType}`),
+        fetch('/api/screening-stats')
+      ])
       const data = await res.json()
+      const statsData = await statsRes.json()
+      
       setRoles(Array.isArray(data) ? data : [])
+      setScreeningStats(Array.isArray(statsData) ? statsData : [])
     } catch(err) {
       console.error(err)
     } finally {
@@ -66,6 +73,19 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tab_type: tabType, role_name: roleName, start_date: startDate })
+      })
+      fetchData()
+    } catch(err) {
+      console.error(err)
+    }
+  }
+
+  const handleDeleteRole = async (id: string, roleName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete the role "${roleName}" and all its metrics?`)) return
+    
+    try {
+      await fetch(`/api/campaigns?id=${id}`, {
+        method: 'DELETE'
       })
       fetchData()
     } catch(err) {
@@ -256,13 +276,22 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                     </div>
                   </td>
                   <td className={styles.fixedLeft2} style={{ background: '#1e3a8a' }}>
-                    {role.role_name}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 600 }}>{role.role_name}</span>
+                      <button 
+                        onClick={() => handleDeleteRole(role.id, role.role_name)}
+                        style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', borderRadius: 4, cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Delete Role"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
                     {tabType === 'Upwork' && (
                       <input 
                         defaultValue={role.annotation || ''}
                         onBlur={(e) => updateField('campaign_tracker_roles', role.id, { annotation: e.target.value })}
                         placeholder="Add annotation..."
-                        style={{ display: 'block', marginTop: 4, fontSize: 11, background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '2px 6px', borderRadius: 4, width: '100%' }}
+                        style={{ display: 'block', marginTop: 8, fontSize: 11, background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '4px 6px', borderRadius: 4, width: '100%' }}
                       />
                     )}
                   </td>
@@ -307,23 +336,36 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                             └ {metric.metric_name}
                           </td>
                           
-                          {/* 4. ACTUAL DATES ITERATOR */}
-                          {dateArray.map(dStr => {
-                            const val = entryDict[dStr] || ''
-                            const isToday = dStr === new Date().toISOString().split('T')[0]
-                            const isBeforeStart = role.start_date && dStr < role.start_date
+                            {dateArray.map(dStr => {
+                              let val = entryDict[dStr] || ''
+                              
+                              // Automatically pull from Screening Dashboard if metric name matches
+                              if (metric.metric_name === 'Completed Screening (daily)') {
+                                const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
+                                if (stat && stat.submitted_count > 0) {
+                                  val = stat.submitted_count.toString()
+                                }
+                              } else if (metric.metric_name === 'Succeed' || metric.metric_name === 'Passed Screening') {
+                                const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
+                                if (stat && stat.passed_count > 0) {
+                                  val = stat.passed_count.toString()
+                                }
+                              }
 
-                            return (
-                              <td key={dStr} style={{ padding: 2, background: isToday ? 'rgba(78, 144, 237, 0.05)' : (isBeforeStart ? 'rgba(0,0,0,0.02)' : '') }}>
-                                <CellInput 
-                                  metricId={metric.id}
-                                  dStr={dStr}
-                                  initialVal={val}
-                                  handleEntryUpsert={handleEntryUpsert}
-                                />
-                              </td>
-                            )
-                          })}
+                              const isToday = dStr === new Date().toISOString().split('T')[0]
+                              const isBeforeStart = role.start_date && dStr < role.start_date
+
+                              return (
+                                <td key={dStr} style={{ padding: 2, background: isToday ? 'rgba(78, 144, 237, 0.05)' : (isBeforeStart ? 'rgba(0,0,0,0.02)' : '') }}>
+                                  <CellInput 
+                                    metricId={metric.id}
+                                    dStr={dStr}
+                                    initialVal={val}
+                                    handleEntryUpsert={handleEntryUpsert}
+                                  />
+                                </td>
+                              )
+                            })}
                         </tr>
                       )
                     })}
