@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     // Ensure properly nullified values for FK keys instead of empty strings
     const payload = {
       ...body,
+      role: body.role || null,
       lead_id: body.lead_id || null,
       recruiter_id: body.recruiter_id || null,
       start_date: body.start_date || null,

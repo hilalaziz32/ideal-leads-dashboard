@@ -6,7 +6,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const body = await req.json()
 
-    // Ensure nulls for empty date fields to avoid postgres errors
+    if ('role' in body && (body.role === '' || body.role === null)) body.role = null
     if ('target_placement_date' in body && body.target_placement_date === '') body.target_placement_date = null
     if ('placed_on' in body && body.placed_on === '') body.placed_on = null
     if ('start_date' in body && body.start_date === '') body.start_date = null
