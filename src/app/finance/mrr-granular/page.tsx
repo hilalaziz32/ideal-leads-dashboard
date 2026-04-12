@@ -16,15 +16,26 @@ interface Assump {
 }
 
 interface DailyRow {
-  entry_date: string
-  actual_mrr: string | number
-  expected_placements: string | number
-  actual_placements: string | number
+  entry_date?: string
+  actual_mrr?: string | number
+  expected_placements?: string | number
+  actual_placements?: string | number
 }
 
 // Editable fields in order — Tab will cycle through these per row
 const EDITABLE_FIELDS = ['actual_mrr', 'expected_placements', 'actual_placements'] as const
 type EditableField = typeof EDITABLE_FIELDS[number]
+
+interface DayEntry extends DailyRow {
+  dStr: string
+  monthIdx: number
+  monthName: string
+  targetMRR: number
+  dayOfMonth: number
+  expectedInc: number
+  actualInc: number
+  avgMrrRef: number
+}
 
 interface CellInputProps {
   dateStr: string
@@ -149,7 +160,7 @@ export default function MRRGranularPage() {
   }
 
   // Tab navigation: move to the next/prev cell in flat order (date × field)
-  const makeFocusCellFn = (daysInYear: any[]) => {
+  const makeFocusCellFn = (daysInYear: DayEntry[]) => {
     // Build flat key list once
     const keys: string[] = []
     for (const day of daysInYear) {
@@ -178,7 +189,7 @@ export default function MRRGranularPage() {
     const totalDays = isLeap ? 366 : 365
     const dt = new Date(year, 0, 1)
     let runningTarget = 0
-    const list = []
+    const list: DayEntry[] = []
     for (let i = 0; i < totalDays; i++) {
       const monthIdx = dt.getMonth()
       const dStr = dt.toISOString().split('T')[0]
@@ -216,19 +227,24 @@ export default function MRRGranularPage() {
     if (daysInYear.length === 0) return null
     
     // Find latest actual MRR or current target
-    const latestWithActual = [...daysInYear].reverse().find(d => !isNaN(parseFloat(d.actual_mrr as any)))
-    const currentMRR = latestWithActual ? parseFloat(latestWithActual.actual_mrr as any) : daysInYear[0].targetMRR
+    const latestWithActual = [...daysInYear].reverse().find(d => d.actual_mrr !== undefined && !isNaN(parseFloat(String(d.actual_mrr))))
+    const currentMRR = latestWithActual ? parseFloat(String(latestWithActual.actual_mrr)) : daysInYear[0].targetMRR
     
     const yearEndTarget = daysInYear[daysInYear.length - 1].targetMRR
-    const totalActualPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(d.actual_placements as any) || 0), 0)
-    const totalExpectedPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(d.expected_placements as any) || 0), 0)
+    const totalActualPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(String(d.actual_placements)) || 0), 0)
+    const totalExpectedPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(String(d.expected_placements)) || 0), 0)
 
     // Gap calculation
     const gap = yearEndTarget - currentMRR
     const gapPercent = Math.max(0, Math.round((currentMRR / yearEndTarget) * 100))
 
     // Chart data (monthly aggregated for cleaner view)
-    const monthlyData = []
+    interface MonthlyDataPoint {
+      name: string
+      target: number
+      actual: number | null
+    }
+    const monthlyData: MonthlyDataPoint[] = []
     let currentMonth = -1
     daysInYear.forEach(d => {
       if (d.monthIdx !== currentMonth) {
@@ -236,7 +252,7 @@ export default function MRRGranularPage() {
         monthlyData.push({
           name: d.monthName.substring(0, 3),
           target: Math.round(d.targetMRR),
-          actual: !isNaN(parseFloat(d.actual_mrr as any)) ? Math.round(parseFloat(d.actual_mrr as any)) : null
+          actual: d.actual_mrr !== undefined && !isNaN(parseFloat(String(d.actual_mrr))) ? Math.round(parseFloat(String(d.actual_mrr))) : null
         })
       }
     })
@@ -336,7 +352,7 @@ export default function MRRGranularPage() {
                 <input
                   type="number"
                   className={styles.input}
-                  value={(getQ(1) as any)[field]}
+                  value={(getQ(1) as Record<string, any>)[field]}
                   onChange={e => handleAssumpChange(1, field, e.target.value)}
                   onBlur={() => saveAssump(1)}
                 />
@@ -403,7 +419,7 @@ export default function MRRGranularPage() {
                             <CellInput
                               dateStr={day.dStr}
                               field={field}
-                              initialVal={(day as any)[field]}
+                              initialVal={day[field] ?? ''}
                               handleUpsert={handleDailyUpsert}
                               onTabNext={() => nav.focusNext(day.dStr, field)}
                               onTabPrev={() => nav.focusPrev(day.dStr, field)}
