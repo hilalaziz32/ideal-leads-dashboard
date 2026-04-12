@@ -6,8 +6,9 @@
   --bg-secondary: #F9FBFC;
   --bg-card: #FFFFFF;
   --bg-card-hover: #F3F5F7;
-  --bg-glass: rgba(11, 79, 220, 0.04);
-  --bg-glass-hover: rgba(11, 79, 220, 0.08);
+  --bg-card-glass: rgba(255, 255, 255, 0.7);
+  --bg-glass: rgba(11, 79, 220, 0.03);
+  --bg-glass-hover: rgba(11, 79, 220, 0.05);
 
   --border: #EAECEF;
   --border-hover: #D1D5DB;
@@ -22,6 +23,7 @@
   --accent-light: #3B82F6;
   --accent-dark: #1E3A8A;
   --accent-glow: rgba(11, 79, 220, 0.1);
+  --accent-gradient: linear-gradient(135deg, #0B4FDC 0%, #3B82F6 100%);
 
   /* Functional Colors */
   --success: #059669;
@@ -50,12 +52,12 @@
   --radius-xl: 16px;
 
   /* Ethereal Minimal Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 0 2px var(--accent-glow);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 0 3px var(--accent-glow);
 
-  --transition: 0.2s cubic-bezier(0.2, 0, 0, 1);
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   
   /* Airtable-Inspired High Density System */
   --at-blue: #2d7ff9;
@@ -123,11 +125,21 @@ a:hover { color: var(--accent-dark); }
   padding: 24px;
   box-shadow: var(--shadow-md);
   transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
 }
 
 .card:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
   border-color: var(--border-hover);
+}
+
+.card-glass {
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-accent);
 }
 
 .btn {

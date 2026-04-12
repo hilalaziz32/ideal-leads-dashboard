@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import styles from './mrr-granular.module.css'
+import StatCard from '@/components/StatCard/StatCard'
 
 interface Assump {
   id?: string
@@ -60,7 +62,7 @@ const CellInput = ({ dateStr, field, initialVal, handleUpsert, onTabNext, onTabP
       className={styles.cellInput}
       type="number"
       value={val}
-      placeholder="—"
+      placeholder=""
       onChange={e => setVal(e.target.value)}
       onBlur={e => {
         const prev = String(initialVal ?? '')
@@ -209,6 +211,39 @@ export default function MRRGranularPage() {
 
   const nav = useMemo(() => makeFocusCellFn(daysInYear), [daysInYear])
 
+  // Aggregate stats for StatCards
+  const stats = useMemo(() => {
+    if (daysInYear.length === 0) return null
+    
+    // Find latest actual MRR or current target
+    const latestWithActual = [...daysInYear].reverse().find(d => !isNaN(parseFloat(d.actual_mrr as any)))
+    const currentMRR = latestWithActual ? parseFloat(latestWithActual.actual_mrr as any) : daysInYear[0].targetMRR
+    
+    const yearEndTarget = daysInYear[daysInYear.length - 1].targetMRR
+    const totalActualPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(d.actual_placements as any) || 0), 0)
+    const totalExpectedPlacements = daysInYear.reduce((acc, d) => acc + (parseFloat(d.expected_placements as any) || 0), 0)
+
+    // Gap calculation
+    const gap = yearEndTarget - currentMRR
+    const gapPercent = Math.max(0, Math.round((currentMRR / yearEndTarget) * 100))
+
+    // Chart data (monthly aggregated for cleaner view)
+    const monthlyData = []
+    let currentMonth = -1
+    daysInYear.forEach(d => {
+      if (d.monthIdx !== currentMonth) {
+        currentMonth = d.monthIdx
+        monthlyData.push({
+          name: d.monthName.substring(0, 3),
+          target: Math.round(d.targetMRR),
+          actual: !isNaN(parseFloat(d.actual_mrr as any)) ? Math.round(parseFloat(d.actual_mrr as any)) : null
+        })
+      }
+    })
+
+    return { currentMRR, yearEndTarget, totalActualPlacements, totalExpectedPlacements, gap, gapPercent, monthlyData }
+  }, [daysInYear])
+
   if (loading && assumptions.length === 0) return (
     <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>Loading…</div>
   )
@@ -217,112 +252,175 @@ export default function MRRGranularPage() {
 
   return (
     <div className={styles.container}>
-      {/* ── LEFT PANEL ── */}
-      <div className={styles.leftPanel}>
-        {/* Year selector */}
-        <div className={styles.yearStrip}>
-          <button className={styles.yearBtn} onClick={() => setYear(y => y - 1)}>‹</button>
-          <span className={styles.yearLabel}>{year}</span>
-          <button className={styles.yearBtn} onClick={() => setYear(y => y + 1)}>›</button>
+      <header>
+        <h1 style={{ marginBottom: 24, fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' }}>
+          Finance Dashboard <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{year}</span>
+        </h1>
+        
+        <div className={styles.dashboardHeader}>
+          <StatCard 
+            title="Total Revenue (MRR)" 
+            value={`$${Math.round(stats?.currentMRR || 0).toLocaleString()}`}
+            change={5.2} // Hardcoded for demo, but could be calc'd
+            trend={stats?.monthlyData.map(m => ({ date: m.name, value: m.actual || m.target }))}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+          />
+          <StatCard 
+            title="Yearly Target" 
+            value={`$${Math.round(stats?.yearEndTarget || 0).toLocaleString()}`}
+            change={stats?.gapPercent}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+          />
+          <StatCard 
+            title="Actual Placements" 
+            value={stats?.totalActualPlacements || 0}
+            change={8}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          />
+          <StatCard 
+            title="Target Gap" 
+            value={`$${Math.max(0, Math.round(stats?.gap || 0)).toLocaleString()}`}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>}
+          />
         </div>
+      </header>
 
-        {/* Q1 / Global config */}
-        <div className={styles.panelSection} style={{ background: 'var(--bg-secondary)' }}>
-          <div className={styles.panelTitle}>Global Config + Q1</div>
-          {[
-            { field: 'avg_mrr_per_customer',    label: 'Avg MRR / Customer' },
-            { field: 'days_before_revenue',     label: 'Days Before Revenue' },
-            { field: 'january_adjustment_days', label: 'Jan Adjustment Days' },
-            { field: 'new_customers_per_month', label: 'New Customers / Mo (Q1)' },
-          ].map(({ field, label }) => (
-            <div className={styles.inputGroup} key={field}>
-              <label className={styles.label}>{label}</label>
-              <input
-                type="number"
-                className={styles.input}
-                value={(getQ(1) as any)[field]}
-                onChange={e => handleAssumpChange(1, field, e.target.value)}
-                onBlur={() => saveAssump(1)}
+      <section className={styles.chartCard} style={{ minWidth: 0 }}>
+        <div className={styles.chartTitle}>Revenue Projection vs Actual Performance</div>
+        <div style={{ width: '100%', height: 350, minWidth: 0 }}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <AreaChart data={stats?.monthlyData}>
+              <defs>
+                <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--success)" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={v => `$${v/1000}k`} />
+              <Tooltip 
+                contentStyle={{ background: 'white', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)' }}
+                itemStyle={{ fontSize: 12, fontWeight: 600 }}
               />
+              <Area type="monotone" dataKey="target" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorTarget)" name="Target MRR" />
+              <Area type="monotone" dataKey="actual" stroke="var(--success)" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" name="Actual MRR" connectNulls />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      <div className={styles.mainGrid}>
+        {/* ── LEFT PANEL ── */}
+        <div className={styles.leftPanel}>
+          {/* Year selector */}
+          <div className={styles.yearStrip}>
+            <button className={styles.yearBtn} onClick={() => setYear(y => y - 1)}>‹</button>
+            <span className={styles.yearLabel}>{year}</span>
+            <button className={styles.yearBtn} onClick={() => setYear(y => y + 1)}>›</button>
+          </div>
+
+          <div className={styles.panelSection}>
+            <div className={styles.panelTitle}>Global Configuration</div>
+            {[
+              { field: 'avg_mrr_per_customer',    label: 'Avg MRR / Customer' },
+              { field: 'days_before_revenue',     label: 'Days Before Revenue' },
+              { field: 'january_adjustment_days', label: 'Jan Adjustment Days' },
+            ].map(({ field, label }) => (
+              <div className={styles.inputGroup} key={field}>
+                <label className={styles.label}>{label}</label>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={(getQ(1) as any)[field]}
+                  onChange={e => handleAssumpChange(1, field, e.target.value)}
+                  onBlur={() => saveAssump(1)}
+                />
+              </div>
+            ))}
+          </div>
+
+          {[1, 2, 3, 4].map(q => (
+            <div key={q} className={styles.panelSection}>
+              <div className={styles.panelTitle}>Q{q} Projections</div>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>New Customers / Mo</label>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={getQ(q).new_customers_per_month}
+                  onChange={e => handleAssumpChange(q, 'new_customers_per_month', e.target.value)}
+                  onBlur={() => saveAssump(q)}
+                />
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Q2–Q4 */}
-        {[2, 3, 4].map(q => (
-          <div key={q} className={styles.panelSection}>
-            <div className={styles.panelTitle}>Q{q} Projections</div>
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>New Customers / Mo (Q{q})</label>
-              <input
-                type="number"
-                className={styles.input}
-                value={getQ(q).new_customers_per_month}
-                onChange={e => handleAssumpChange(q, 'new_customers_per_month', e.target.value)}
-                onBlur={() => saveAssump(q)}
-              />
-            </div>
+        {/* ── RIGHT TABLE ── */}
+        <div className={styles.rightPanel}>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Target MRR</th>
+                  <th>Actual MRR ✎</th>
+                  <th>Exp. placements ✎</th>
+                  <th>Act. placements ✎</th>
+                  <th>Exp. MRR Inc.</th>
+                  <th>Act. MRR Inc.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {daysInYear.map((day) => {
+                  const isFirstOfMonth = day.dayOfMonth === 1
+                  const isToday = day.dStr === todayStr
+                  const actualNum = parseFloat(day.actual_mrr as any)
+
+                  let rowClass = ''
+                  if (isToday) rowClass = styles.rowToday
+                  else if (!isNaN(actualNum)) {
+                    rowClass = actualNum >= day.targetMRR ? styles.rowGreen : styles.rowRed
+                  }
+
+                  return (
+                    <React.Fragment key={day.dStr}>
+                      {isFirstOfMonth && (
+                        <tr className={styles.monthHeaderRow}>
+                          <th colSpan={7}>{day.monthName} {year}</th>
+                        </tr>
+                      )}
+                      <tr className={rowClass} ref={isToday ? todayRef : null}>
+                        <td>{day.dStr}</td>
+                        <td style={{ fontWeight: 700 }}>${Math.round(day.targetMRR).toLocaleString()}</td>
+                        {EDITABLE_FIELDS.map(field => (
+                          <td key={field}>
+                            <CellInput
+                              dateStr={day.dStr}
+                              field={field}
+                              initialVal={(day as any)[field]}
+                              handleUpsert={handleDailyUpsert}
+                              onTabNext={() => nav.focusNext(day.dStr, field)}
+                              onTabPrev={() => nav.focusPrev(day.dStr, field)}
+                              inputRef={registerCell(day.dStr, field)}
+                            />
+                          </td>
+                        ))}
+                        <td><span style={{ color: day.expectedInc > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>${day.expectedInc.toLocaleString()}</span></td>
+                        <td><span style={{ color: day.actualInc > 0 ? 'var(--success)' : 'var(--text-muted)' }}>${day.actualInc.toLocaleString()}</span></td>
+                      </tr>
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
-
-      {/* ── RIGHT TABLE ── */}
-      <div className={styles.rightPanel}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Target MRR</th>
-              <th>Actual MRR ✎</th>
-              <th>Exp. Placements ✎</th>
-              <th>Act. Placements ✎</th>
-              <th>Exp. MRR Inc.</th>
-              <th>Act. MRR Inc.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {daysInYear.map((day) => {
-              const isFirstOfMonth = day.dayOfMonth === 1
-              const isToday = day.dStr === todayStr
-              const actualNum = parseFloat(day.actual_mrr as any)
-
-              let rowClass = ''
-              if (isToday) rowClass = styles.rowToday
-              else if (!isNaN(actualNum)) {
-                rowClass = actualNum >= day.targetMRR ? styles.rowGreen : styles.rowRed
-              }
-
-              return (
-                <React.Fragment key={day.dStr}>
-                  {isFirstOfMonth && (
-                    <tr className={styles.monthHeaderRow}>
-                      <th colSpan={7}>{day.monthName} {year}</th>
-                    </tr>
-                  )}
-                  <tr className={rowClass} ref={isToday ? todayRef : null}>
-                    <td>{day.dStr}</td>
-                    <td><span>${Math.round(day.targetMRR).toLocaleString()}</span></td>
-                    {EDITABLE_FIELDS.map(field => (
-                      <td key={field}>
-                        <CellInput
-                          dateStr={day.dStr}
-                          field={field}
-                          initialVal={(day as any)[field]}
-                          handleUpsert={handleDailyUpsert}
-                          onTabNext={() => nav.focusNext(day.dStr, field)}
-                          onTabPrev={() => nav.focusPrev(day.dStr, field)}
-                          inputRef={registerCell(day.dStr, field)}
-                        />
-                      </td>
-                    ))}
-                    <td><span style={{ color: day.expectedInc > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>${day.expectedInc.toLocaleString()}</span></td>
-                    <td><span style={{ color: day.actualInc > 0 ? 'var(--success)' : 'var(--text-muted)' }}>${day.actualInc.toLocaleString()}</span></td>
-                  </tr>
-                </React.Fragment>
-              )
-            })}
-          </tbody>
-        </table>
+        </div>
       </div>
     </div>
   )

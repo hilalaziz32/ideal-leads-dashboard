@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useEffect, useState, useMemo } from 'react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import styles from './campaignGrid.module.css'
+import StatCard from '@/components/StatCard/StatCard'
 
 interface CampaignGridProps {
   tabType: 'Upwork' | 'Live'
@@ -38,6 +40,28 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
   const [roles, setRoles] = useState<any[]>([])
   const [screeningStats, setScreeningStats] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Collapsing state (Starting with empty sets = all collapsed by default)
+  const [expandedRoles, setExpandedRoles] = useState<Set<string>>(new Set())
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set())
+
+  const toggleRole = (id: string) => {
+    setExpandedRoles(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSource = (id: string) => {
+    setExpandedSources(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     fetchData()
@@ -188,28 +212,90 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
     })
   }
 
-  if (loading) return <div style={{padding: 24}}>Loading tracker grid...</div>
+  // Aggregate stats for StatCards
+  const stats = useMemo(() => {
+    if (roles.length === 0) return null
+
+    const activeCount = roles.filter(r => r.running_status === 'Yes').length
+    
+    // Calculate 7-day volume
+    let totalApps = 0
+    let totalPassed = 0
+    let totalSucceed = 0
+    const volumeData: any[] = []
+
+    dateArray.forEach(dStr => {
+      let dailyTotal = 0
+      roles.forEach(role => {
+        const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
+        if (stat) {
+          dailyTotal += stat.submitted_count
+          totalApps += stat.submitted_count
+          totalPassed += stat.passed_count
+        }
+
+        // Aggregate manual "Succeed" entries
+        ;(role.campaign_tracker_sources || []).forEach((src: any) => {
+          ;(src.campaign_tracker_metrics || []).forEach((m: any) => {
+            if (m.metric_name === 'Succeed') {
+              const entry = (m.campaign_tracker_daily_entries || []).find((e: any) => e.entry_date === dStr)
+              if (entry) totalSucceed += (parseFloat(entry.entry_value) || 0)
+            }
+          })
+        })
+      })
+      volumeData.push({ date: dStr.split('-')[2], value: dailyTotal })
+    })
+
+    const passRate = totalApps > 0 ? Math.round((totalPassed / totalApps) * 100) : 0
+
+    return { activeCount, totalApps, passRate, totalSucceed, volumeData }
+  }, [roles, screeningStats, dateArray])
+
+  if (loading) return <div style={{padding: 40, color: 'var(--text-muted)' }}>Loading tracker grid...</div>
 
   return (
-    <div style={{ paddingBottom: 100 }}>
-      {/* Top Banner & Filters */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
-        <button 
-          onClick={handleAddRole} 
-          style={{ padding: '8px 16px', background: 'var(--accent)', color: 'white', borderRadius: 4, cursor: 'pointer', border: 'none', fontWeight: 600 }}
-        >
-          + Add New Role
-        </button>
+    <div className={styles.container}>
+      <header>
+        <div className={styles.dashboardHeader}>
+          <StatCard 
+            title="Active Campaigns" 
+            value={stats?.activeCount || 0}
+            change={2}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+          />
+          <StatCard 
+            title="Total Applications (Screened)" 
+            value={stats?.totalApps || 0}
+            trend={stats?.volumeData}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>}
+          />
+          <StatCard 
+            title="Screening Pass Rate" 
+            value={`${stats?.passRate || 0}%`}
+            change={stats?.passRate && stats.passRate > 50 ? 5 : -2}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+          />
+          <StatCard 
+            title="Total Successes" 
+            value={stats?.totalSucceed || 0}
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}
+          />
+        </div>
 
         <div className={styles.filterBar}>
-          <div className={styles.quickFilters}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>VIEW:</span>
-            <button className={styles.filterBtn} onClick={() => setFilterMode('7')}>7 Days</button>
-            <button className={styles.filterBtn} onClick={() => setFilterMode('14')}>14 Days</button>
-            <button className={styles.filterBtn} onClick={() => setFilterMode('month')}>This Month</button>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button onClick={handleAddRole} className={styles.addBtn}>+ New Role</button>
+            <div className={styles.quickFilters}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>PRESETS</span>
+              <button className={styles.filterBtn} onClick={() => setFilterMode('7')}>7D</button>
+              <button className={styles.filterBtn} onClick={() => setFilterMode('14')}>14D</button>
+              <button className={styles.filterBtn} onClick={() => setFilterMode('month')}>Month</button>
+            </div>
           </div>
-          <div className={styles.customDateFilter}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>CUSTOM:</span>
+          
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>CUSTOM RANGE</span>
             <input 
               type="date" 
               className={styles.dateInput} 
@@ -225,7 +311,7 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
             />
           </div>
         </div>
-      </div>
+      </header>
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
@@ -258,12 +344,18 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
             </tr>
           </thead>
           <tbody>
-            {roles.map(role => (
+            {roles.map(role => {
+              const roleExpanded = expandedRoles.has(role.id)
+              
+              return (
               <React.Fragment key={role.id}>
                 {/* 1. ROLE BANNER ROW */}
                 <tr className={styles.roleHeaderRow}>
                   <td className={`${styles.fixedLeft} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button onClick={() => toggleRole(role.id)} className={styles.collapseBtn}>
+                        {roleExpanded ? '▼' : '▶'}
+                      </button>
                       <select 
                         className={`${styles.selectNode} ${role.running_status === 'Yes' ? styles.chipYes : styles.chipNo}`}
                         value={role.running_status || 'No'}
@@ -276,7 +368,7 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                   </td>
                   <td className={`${styles.fixedLeft2} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontWeight: 600 }}>{role.role_name}</span>
+                      <span style={{ fontWeight: 800, fontSize: 13 }}>{role.role_name}</span>
                       <button 
                         onClick={() => handleDeleteRole(role.id, role.role_name)}
                         style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
@@ -295,32 +387,57 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                     )}
                   </td>
                   <td className={`${styles.fixedLeft3} ${styles.cellPadding}`} style={{ background: 'var(--bg-secondary)' }}></td>
-                  <td colSpan={dateArray.length} style={{ background: 'var(--bg-secondary)' }}></td>
+                  {/* Localized Date Header for Each Role Card */}
+                  {dateArray.map(dStr => {
+                    const dayNum = parseInt(dStr.split('-')[2])
+                    const isToday = dStr === new Date().toISOString().split('T')[0]
+                    return (
+                      <td key={dStr} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: isToday ? 'var(--accent)' : 'var(--text-muted)', background: 'var(--bg-secondary)', borderBottom: `1px solid var(--border)` }}>
+                        {dayNum}
+                      </td>
+                    )
+                  })}
                 </tr>
 
-                {/* 2. SOURCES LOOP */}
-                {(role.campaign_tracker_sources || []).sort((a:any, b:any) => a.sort_order - b.sort_order).map((source: any) => (
+                {!roleExpanded && (
+                  /* Note: UI logic change: user wants to see nothing by default, 
+                     so if NOT expanded, we show nothing. Wait, the user said 
+                     "default view should be like this" pointing to a collapsed list.
+                     Actually, if roleExpanded is true, we show sources.
+                  */
+                  null
+                )}
+
+                {roleExpanded && (role.campaign_tracker_sources || []).sort((a:any, b:any) => a.sort_order - b.sort_order).map((source: any) => {
+                  const sourceExpanded = expandedSources.has(source.id)
+                  
+                  return (
                   <React.Fragment key={source.id}>
                     {/* Source Title Row (SubHeader) */}
-                    <tr>
+                    <tr className={styles.sourceHeaderRow}>
                       <td className={styles.fixedLeft} style={{ background: 'var(--bg-card)' }}>
-                        <select 
-                          className={`${styles.selectNode} ${source.running_status === 'Yes' ? styles.chipYes : styles.chipNo}`}
-                          value={source.running_status || 'No'}
-                          onChange={(e) => updateField('campaign_tracker_sources', source.id, { running_status: e.target.value })}
-                        >
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </select>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => toggleSource(source.id)} className={styles.collapseBtn} style={{ color: 'var(--accent)' }}>
+                            {sourceExpanded ? '▼' : '▶'}
+                          </button>
+                          <select 
+                            className={`${styles.selectNode} ${source.running_status === 'Yes' ? styles.chipYes : styles.chipNo}`}
+                            value={source.running_status || 'No'}
+                            onChange={(e) => updateField('campaign_tracker_sources', source.id, { running_status: e.target.value })}
+                          >
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        </div>
                       </td>
                       <td className={styles.fixedLeft2} colSpan={2} style={{ background: 'var(--bg-card)', fontWeight: 600, color: 'var(--text-secondary)' }}>
                         {source.source_name}
                       </td>
-                      <td colSpan={dateArray.length} style={{ background: 'rgba(0,0,0,0.02)' }}></td>
+                      <td colSpan={dateArray.length}></td>
                     </tr>
 
                     {/* 3. METRICS LOOP */}
-                    {(source.campaign_tracker_metrics || []).sort((x:any, y:any) => x.sort_order - y.sort_order).map((metric: any) => {
+                    {sourceExpanded && (source.campaign_tracker_metrics || []).sort((x:any, y:any) => x.sort_order - y.sort_order).map((metric: any) => {
                       
                       const entryDict: Record<string, string> = {}
                       ;(metric.campaign_tracker_daily_entries || []).forEach((e: any) => {
@@ -338,18 +455,22 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                             {dateArray.map(dStr => {
                               let val = entryDict[dStr] || ''
                               
-                              // Automatically pull from Screening Dashboard if metric name matches
-                              if (metric.metric_name === 'Completed Screening (daily)') {
-                                const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
-                                if (stat && stat.submitted_count > 0) {
-                                  val = stat.submitted_count.toString()
-                                }
-                              } else if (metric.metric_name === 'Succeed' || metric.metric_name === 'Passed Screening') {
-                                const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
-                                if (stat && stat.passed_count > 0) {
-                                  val = stat.passed_count.toString()
+                              // Automatically pull from Screening Dashboard ONLY for Upwork tab
+                              // Live Tracker remains strictly manual per user request
+                              if (tabType === 'Upwork') {
+                                if (metric.metric_name === 'Completed Screening (daily)') {
+                                  const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
+                                  if (stat && stat.submitted_count > 0) {
+                                    val = stat.submitted_count.toString()
+                                  }
+                                } else if (metric.metric_name === 'Passed Screening') {
+                                  const stat = screeningStats.find(s => s.test_title === role.role_name && s.day === dStr)
+                                  if (stat && stat.passed_count > 0) {
+                                    val = stat.passed_count.toString()
+                                  }
                                 }
                               }
+                              // "Succeed" is now strictly manual (per user request)
 
                               const isToday = dStr === new Date().toISOString().split('T')[0]
                               const isBeforeStart = role.start_date && dStr < role.start_date
@@ -367,11 +488,11 @@ export default function CampaignGrid({ tabType }: CampaignGridProps) {
                             })}
                         </tr>
                       )
-                    })}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            ))}
+                    })}</React.Fragment>
+                  )
+                })}</React.Fragment>
+              )
+            })}
 
             {roles.length === 0 && (
               <tr>

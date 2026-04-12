@@ -1,197 +1,210 @@
-.tableWrapper {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  position: relative;
+.container {
+  padding: 0 0 100px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 13px;
-  text-align: left;
+.dashboardHeader {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
 }
 
-/* Floating left columns */
-.fixedLeft {
-  position: sticky;
-  left: 0;
-  background: var(--bg-secondary);
-  z-index: 10;
-}
-
-.fixedLeft2 {
-  position: sticky;
-  left: 100px;
-  background: var(--bg-secondary);
-  z-index: 10;
-}
-
-.fixedLeft3 {
-  position: sticky;
-  left: 300px;
-  background: var(--bg-secondary);
-  z-index: 10;
-  border-right: 2px solid var(--border) !important;
-}
-
-.table th, .table td {
-  padding: 0; /* Tight padding for airtable look */
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  height: 32px;
-}
-
-.table .fixedLeft, .table .fixedLeft2, .table .fixedLeft3 {
-  padding: 0 12px;
-}
-
-.table th {
-  background: var(--bg-secondary);
-  font-weight: 500;
-  color: var(--text-muted);
-  padding: 6px 12px;
-}
-
-.table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-
-.table thead .fixedLeft, 
-.table thead .fixedLeft2, 
-.table thead .fixedLeft3 {
-  z-index: 15;
-}
-
-/* Column Widths */
-.colRunning { width: 100px; min-width: 100px; }
-.colRole { width: 200px; min-width: 200px; }
-.colMetric { width: 220px; min-width: 220px; }
-.colDate { width: 70px; min-width: 70px; text-align: center; }
-
-/* Filter Bar UI */
 .filterBar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
+  padding: 16px 24px;
   background: var(--bg-card);
-  padding: 6px 12px;
-  border-radius: 6px;
   border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
 }
 
 .quickFilters {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
 }
 
 .filterBtn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--text-primary);
-  transition: all 0.2s;
+  transition: all var(--transition);
 }
 
 .filterBtn:hover {
-  background: var(--bg-secondary);
-}
-
-.customDateFilter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 20px;
-  border-left: 1px solid var(--border);
+  background: var(--bg-card-hover);
+  border-color: var(--accent-light);
+  color: var(--accent);
 }
 
 .dateInput {
-  padding: 2px 6px;
+  padding: 6px 10px;
+  font-size: 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 13px;
-  background: transparent;
-  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
 }
 
-/* Role Header Banner Row */
-.roleHeaderRow td {
-  background: var(--bg-secondary) !important;
-  color: var(--text-primary);
-  font-weight: 600;
-  border-bottom: 2px solid var(--border);
-  border-top: 2px solid var(--border);
+.tableWrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: auto;
+  max-width: 100%;
 }
 
-/* Cell Inputs */
-.cellInput {
+.table {
   width: 100%;
-  height: 100%;
-  min-height: 32px;
-  border: none;
-  background: transparent;
-  text-align: center;
-  font-family: inherit;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
-  padding: 0 4px;
-  cursor: text;
-  color: var(--text-primary);
-  outline: none;
-  transition: box-shadow 0.1s;
 }
 
-.cellInput:hover {
-  background: rgba(0, 0, 0, 0.02);
+.table th {
+  background: var(--bg-secondary);
+  padding: 12px 16px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
 }
 
-.cellInput:focus {
-  background: var(--bg-primary);
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-
-/* Month rows */
-.table td.monthGroup {
-  border-top: 2px solid var(--border);
+.table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
 
 .monthHeader {
   text-align: center;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
 }
 
-/* Select Pills (Airtable Tag Style) */
-.selectNode {
-  width: auto;
-  appearance: none;
-  -webkit-appearance: none;
-  padding: 2px 14px;
-  border-radius: 12px;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+.fixedLeft {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--bg-card);
+}
+
+.fixedLeft2 {
+  position: sticky;
+  left: 80px;
+  z-index: 5;
+  background: var(--bg-card);
+  min-width: 250px;
+}
+
+.fixedLeft3 {
+  position: sticky;
+  left: 330px;
+  z-index: 5;
+  background: var(--bg-card);
+  min-width: 180px;
+}
+
+.colRunning { width: 80px; }
+.colRole { width: 250px; }
+.colMetric { width: 180px; }
+
+.roleHeaderRow td {
+  background: var(--bg-secondary) !important;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-top: 4px solid var(--border) !important;
+}
+
+.sourceHeaderRow td {
+  background: rgba(11, 79, 220, 0.06) !important;
+  font-weight: 700;
+  color: var(--accent);
+  border-top: 1px solid var(--border-accent);
+}
+
+.cellInput {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  padding: 4px;
   text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all var(--transition);
+  color: var(--text-primary);
+}
+
+.cellInput:hover {
+  background: white;
+  border-color: var(--border-hover);
+}
+
+.cellInput:focus {
+  background: white;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
   outline: none;
 }
 
-.chipYes { background: rgba(11, 130, 59, 0.15); color: #0b823b; }
-.chipNo { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
-.chipNeutral { background: var(--border); color: var(--text-primary); }
+.selectNode {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+}
 
-.cellPadding {
-  padding: 4px 12px !important;
+.chipYes { background: var(--success); color: white; }
+.chipNo { background: var(--danger); color: white; }
+
+.addBtn {
+  background: var(--accent-gradient);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.addBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(11, 79, 220, 0.2);
+}
+
+.collapseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: all var(--transition);
+}
+
+.collapseBtn:hover {
+  color: var(--accent);
+  transform: scale(1.2);
 }

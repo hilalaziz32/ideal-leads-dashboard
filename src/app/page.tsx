@@ -386,8 +386,8 @@ export default function MetricsDashboard() {
                   <p className={styles.chartSubtitle}>Cumulative entry points visualized against time</p>
                 </div>
               </div>
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer>
+              <div style={{ width: '100%', height: 260, minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={leadChartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} dy={10} />
@@ -639,9 +639,9 @@ export default function MetricsDashboard() {
               Screening Aggregate Analytics
             </div>
             
-            <div className={styles.chartContainer}>
-              <div style={{ width: '100%', height: 360 }}>
-                <ResponsiveContainer>
+            <div className={styles.chartContainer} style={{ minWidth: 0 }}>
+              <div style={{ width: '100%', height: 360, minWidth: 0 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <AreaChart data={dates.map(d => ({
                       date: fmtDate(d),
                       Submitted: screeningStats.filter(s => s.day === fmtISO(d)).reduce((a, s) => a + s.submitted_count, 0),
