@@ -95,17 +95,137 @@ export default function LiveMilestones() {
 
   if (loading) return <div>Loading...</div>
 
+  const activeRoles = roles.filter(r => r.status !== 'Archived')
+  
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  
+  const todayMs = today.getTime()
+  const fiveDaysMs = todayMs + (5 * 24 * 60 * 60 * 1000)
+
+  let overdueCount = 0
+  let dueWithin5Count = 0
+  
+  let totalRoleDelayDays = 0
+  let delayedRolesCount = 0
+
+  let totalMilestoneDelayDays = 0
+  let delayedMilestonesCount = 0
+
+  const allUrgentMilestones: { roleName: string; clientName: string; milestoneName: string; daysLeft: number; isMissed: boolean }[] = []
+
+  activeRoles.forEach(r => {
+    // 1. Placement (Role) Calculation
+    if (r.status !== 'Placed' && r.target_placement_date) {
+      const target = new Date(r.target_placement_date)
+      target.setHours(0,0,0,0)
+      const diffMs = todayMs - target.getTime()
+      
+      if (diffMs > 0) {
+        overdueCount++
+        totalRoleDelayDays += Math.floor(diffMs / (1000 * 60 * 60 * 24))
+        delayedRolesCount++
+      } else if (diffMs <= 0 && diffMs >= -fiveDaysMs + todayMs) {
+        // diffMs is between 0 and -5 days worth of ms, meaning it's due in <= 5 days
+        // wait, earlier logic: tMs >= todayMs && tMs <= fiveDaysMs
+        const tMs = target.getTime()
+        if (tMs >= todayMs && tMs <= fiveDaysMs) dueWithin5Count++
+      }
+    }
+
+    // 2. Milestone calculation
+    if (Array.isArray(r.milestones_json)) {
+      r.milestones_json.forEach((m: any) => {
+         if (!m.is_achieved && m.target_date) {
+            const mTarget = new Date(m.target_date)
+            mTarget.setHours(0,0,0,0)
+            const diffMs = mTarget.getTime() - todayMs
+            const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+            
+            if (daysLeft < 0) {
+               totalMilestoneDelayDays += Math.abs(daysLeft)
+               delayedMilestonesCount++
+            }
+
+            if (daysLeft <= 7) {
+               allUrgentMilestones.push({
+                 roleName: r.role || 'Unnamed Role',
+                 clientName: r.order_leads?.contact_name || r.order_leads?.company_name || r.manual_client_name || 'No Client Assigned',
+                 milestoneName: m.label,
+                 daysLeft: daysLeft,
+                 isMissed: !!m.is_missed
+               })
+            }
+         }
+      })
+    }
+  })
+
+  allUrgentMilestones.sort((a,b) => a.daysLeft - b.daysLeft)
+  const top3Urgent = allUrgentMilestones.slice(0, 3)
+
+  const avgRoleDelay = delayedRolesCount > 0 ? Math.round(totalRoleDelayDays / delayedRolesCount) : 0
+  const avgMilestoneDelay = delayedMilestonesCount > 0 ? Math.round(totalMilestoneDelayDays / delayedMilestonesCount) : 0
+
   return (
     <div className={styles.container}>
-      <h2 style={{ margin: '0 0 24px 0', fontWeight: 600 }}>Live Milestones</h2>
+      {top3Urgent.length > 0 && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '12px 16px', borderRadius: 8, marginBottom: 20, display: 'flex', gap: 16, alignItems: 'center', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div style={{ color: '#D97706', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>⚡</span> Urgent Action
+          </div>
+          <div style={{ width: 1, height: 24, background: '#FDE68A', margin: '0 4px' }} />
+          {top3Urgent.map((u, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              {u.daysLeft < 0 ? (
+                <span style={{ color: '#DC2626', fontWeight: 600, background: '#FEE2E2', padding: '2px 6px', borderRadius: 4 }}>{Math.abs(u.daysLeft)}d OVERDUE</span>
+              ) : (
+                <span style={{ color: '#D97706', fontWeight: 600, background: '#FEF3C7', padding: '2px 6px', borderRadius: 4 }}>DUE IN {u.daysLeft}d</span>
+              )}
+              <span style={{ fontWeight: 600, color: '#111' }}>{u.roleName} ({u.clientName})</span>
+              <span style={{ color: 'var(--text-muted)' }}>&rarr; {u.milestoneName}</span>
+              {i < top3Urgent.length - 1 && <span style={{ margin: '0 8px', color: '#D1D5DB' }}>•</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        <div style={{ padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, flex: 1, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Orders Overdue</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: overdueCount > 0 ? '#DC2626' : 'var(--text-primary)', marginTop: 4 }}>{overdueCount}</div>
+        </div>
+        <div style={{ padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, flex: 1, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Due in Next 5 Days</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: dueWithin5Count > 0 ? '#D97706' : 'var(--text-primary)', marginTop: 4 }}>{dueWithin5Count}</div>
+        </div>
+        <div style={{ padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, flex: 1, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Avg Role Delay</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: avgRoleDelay > 0 ? '#DC2626' : 'var(--text-primary)' }}>{avgRoleDelay}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>days delay</span>
+          </div>
+        </div>
+        <div style={{ padding: '16px 20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, flex: 1, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Avg Milestone Delay</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: avgMilestoneDelay > 0 ? '#DC2626' : 'var(--text-primary)' }}>{avgMilestoneDelay}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>days delay</span>
+          </div>
+        </div>
+      </div>
 
       <div className={styles.grid}>
-        {roles.filter(r => r.status !== 'Archived').map(r => {
-          const currentMilestone = Array.isArray(r.milestones_json) ? r.milestones_json.find((m: any) => !m.is_achieved) : null
+        {activeRoles.map(r => {
+          const currentMilestone = Array.isArray(r.milestones_json) ? r.milestones_json.find((m: any) => !m.is_achieved && !m.is_missed) : null
+          const hasMissed = Array.isArray(r.milestones_json) && r.milestones_json.some((m: any) => m.is_missed)
           
           return (
-            <div key={r.id} className={styles.miniCard} onClick={() => setActiveRoleModal(r.id)}>
-              <div className={styles.miniRoleName}>{r.role || 'Unnamed Role'}</div>
+            <div key={r.id} className={styles.miniCard} onClick={() => setActiveRoleModal(r.id)} style={hasMissed ? { borderColor: '#DC2626', background: 'rgba(220, 38, 38, 0.02)' } : undefined}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className={styles.miniRoleName}>{r.role || 'Unnamed Role'}</div>
+                {hasMissed && <span style={{ fontSize: 10, background: '#FEE2E2', color: '#DC2626', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>MISSED</span>}
+              </div>
               <div className={styles.miniCompanyName}>{r.order_leads?.contact_name || r.order_leads?.company_name || r.manual_client_name || 'No Client Assigned'}</div>
               {currentMilestone && (
                 <div className={styles.miniNextMilestone}>
@@ -127,7 +247,23 @@ export default function LiveMilestones() {
       {activeRoleModal && (
         <div className={styles.modalOverlay} onClick={() => setActiveRoleModal(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.closeBtn} onClick={() => setActiveRoleModal(null)}>✕</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 600, fontSize: 16 }}>Role Details</div>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <button 
+                  style={{ background: 'none', border: '1px solid #DC2626', color: '#DC2626', padding: '4px 12px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to archive this role?')) {
+                      handleUpdate(activeRoleModal, 'status', 'Archived');
+                      setActiveRoleModal(null);
+                    }
+                  }}
+                >
+                  Archive Role
+                </button>
+                <button className={styles.closeBtn} style={{ position: 'static' }} onClick={() => setActiveRoleModal(null)}>✕</button>
+              </div>
+            </div>
             <div className={styles.modalBody}>
               {(() => {
                 const r = roles.find(ro => ro.id === activeRoleModal)

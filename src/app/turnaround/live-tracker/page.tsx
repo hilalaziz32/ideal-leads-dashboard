@@ -116,6 +116,26 @@ export default function LiveRoleTracker() {
     const days = calculateDays(r.target_placement_date)
     return days !== null && days < 0 && r.status !== 'Placed'
   }).length
+  const totalDueIn5 = roles.filter(r => {
+    const days = calculateDays(r.target_placement_date)
+    return days !== null && days >= 0 && days <= 5 && r.status !== 'Placed'
+  }).length
+
+  const urgentRoles: { roleName: string; clientName: string; daysLeft: number }[] = []
+  
+  roles.filter(r => r.status !== 'Placed' && r.status !== 'Archived').forEach(r => {
+    const days = calculateDays(r.target_placement_date)
+    if (days !== null && days <= 7) {
+      urgentRoles.push({
+        roleName: r.role || 'Unnamed Role',
+        clientName: r.order_leads?.contact_name || r.order_leads?.company_name || r.manual_client_name || 'No Client',
+        daysLeft: days
+      })
+    }
+  })
+  
+  urgentRoles.sort((a,b) => a.daysLeft - b.daysLeft)
+  const top3UrgentRoles = urgentRoles.slice(0, 3)
 
   return (
     <div className={styles.container}>
@@ -134,6 +154,27 @@ export default function LiveRoleTracker() {
         <button onClick={handleAddRow} className={styles.actionButton}>+ Add Role</button>
       </div>
 
+      {top3UrgentRoles.length > 0 && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '12px 16px', borderRadius: 8, marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div style={{ color: '#D97706', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>⚡</span> Urgent Roles Focus
+          </div>
+          <div style={{ width: 1, height: 24, background: '#FDE68A', margin: '0 4px' }} />
+          {top3UrgentRoles.map((u, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              {u.daysLeft < 0 ? (
+                <span style={{ color: '#DC2626', fontWeight: 600, background: '#FEE2E2', padding: '2px 6px', borderRadius: 4 }}>{Math.abs(u.daysLeft)}d OVERDUE</span>
+              ) : (
+                <span style={{ color: '#D97706', fontWeight: 600, background: '#FEF3C7', padding: '2px 6px', borderRadius: 4 }}>DUE IN {u.daysLeft}d</span>
+              )}
+              <span style={{ fontWeight: 600, color: '#111' }}>{u.roleName}</span>
+              <span style={{ color: 'var(--text-muted)' }}>({u.clientName})</span>
+              {i < top3UrgentRoles.length - 1 && <span style={{ margin: '0 8px', color: '#D1D5DB' }}>•</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
           <div className={styles.kpiLabel}>Active Roles</div>
@@ -146,6 +187,10 @@ export default function LiveRoleTracker() {
         <div className={styles.kpiCard}>
           <div className={styles.kpiLabel}>Overdue</div>
           <div className={totalOverdue > 0 ? `${styles.kpiValue} ${styles.kpiAlert}` : styles.kpiValue}>{totalOverdue}</div>
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiLabel}>Due in 5 Days</div>
+          <div className={styles.kpiValue} style={totalDueIn5 > 0 ? { color: '#D97706' } : {}}>{totalDueIn5}</div>
         </div>
       </div>
 
@@ -171,8 +216,9 @@ export default function LiveRoleTracker() {
               const daysToPlacement = calculateDays(r.target_placement_date)
               const isOverdue = daysToPlacement !== null && daysToPlacement < 0 && r.status !== 'Placed'
               const currentMilestone = Array.isArray(r.milestones_json) 
-                ? r.milestones_json.find((m: any) => !m.is_achieved) 
+                ? r.milestones_json.find((m: any) => !m.is_achieved && !m.is_missed) 
                 : null
+              const hasMissed = Array.isArray(r.milestones_json) && r.milestones_json.some((m: any) => m.is_missed)
 
               return (
                 <tr key={r.id}>
@@ -277,14 +323,25 @@ export default function LiveRoleTracker() {
                   {/* Recruitment Stage (Milestone Read-only) */}
                   <td>
                     <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', padding: '6px 0' }}>
-                      {currentMilestone ? (
+                      {hasMissed && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#DC2626', background: '#FEE2E2', padding: '2px 6px', borderRadius: 4, width: 'fit-content', marginBottom: currentMilestone ? 4 : 0, fontSize: 10, fontWeight: 700 }}>
+                          <span style={{ fontSize: 10 }}>⚠</span> MISSED
+                        </div>
+                      )}
+                      {currentMilestone && !hasMissed ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
                           {currentMilestone.label}
                         </div>
-                      ) : (
+                      ) : currentMilestone && hasMissed ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          Next: {currentMilestone.label}
+                        </div>
+                      ) : !currentMilestone && Array.isArray(r.milestones_json) && r.milestones_json.length > 0 && !hasMissed ? (
+                        <div style={{ color: '#059669', fontWeight: 600 }}>✓ All Achieved</div>
+                      ) : !currentMilestone && !hasMissed ? (
                         <div style={{ color: 'var(--text-muted)' }}>No Active Milestone</div>
-                      )}
+                      ) : null}
                     </div>
                   </td>
 
