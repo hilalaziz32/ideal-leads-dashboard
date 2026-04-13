@@ -12,14 +12,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ('start_date' in body && body.start_date === '') body.start_date = null
     if ('recruiting_start_date' in body && body.recruiting_start_date === '') body.recruiting_start_date = null
     if ('recruitment_completion_date' in body && body.recruitment_completion_date === '') body.recruitment_completion_date = null
-    if ('recruiter_id' in body && body.recruiter_id === '') body.recruiter_id = null
     if ('lead_id' in body && body.lead_id === '') body.lead_id = null
     if ('quarter_override' in body && body.quarter_override === '') body.quarter_override = null
-    if ('m1_status' in body && body.m1_status === '') body.m1_status = null
-    if ('m2_status' in body && body.m2_status === '') body.m2_status = null
-    if ('m3_status' in body && body.m3_status === '') body.m3_status = null
-    if ('m4_status' in body && body.m4_status === '') body.m4_status = null
-    if ('m5_status' in body && body.m5_status === '') body.m5_status = null
 
     const { error } = await supabase
       .from('order_turnaround_roles')

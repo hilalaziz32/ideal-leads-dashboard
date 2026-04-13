@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const { data, error } = await supabase
     .from('order_turnaround_roles')
-    .select('*, order_leads(contact_name, created_at), referral_partners(name)')
+    .select('*, order_leads(contact_name, created_at)')
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -20,7 +20,8 @@ export async function POST(req: Request) {
       ...body,
       role: body.role || null,
       lead_id: body.lead_id || null,
-      recruiter_id: body.recruiter_id || null,
+      recruiters_json: body.recruiters_json || [],
+      milestones_json: body.milestones_json || [],
       start_date: body.start_date || null,
       target_placement_date: body.target_placement_date || null,
       placed_on: body.placed_on || null
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from('order_turnaround_roles')
       .insert(payload)
-      .select('*, order_leads(contact_name, created_at), referral_partners(name)')
+      .select('*, order_leads(contact_name, created_at)')
       .single()
 
     if (error) throw error

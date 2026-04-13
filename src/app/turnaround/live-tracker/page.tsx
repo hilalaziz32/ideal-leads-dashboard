@@ -13,6 +13,8 @@ export default function LiveRoleTracker() {
   const [recStages, setRecStages] = useState<any[]>([])
   const [statuses, setStatuses] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [showArchived, setShowArchived] = useState(false)
+  const [leadSetupModalId, setLeadSetupModalId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -102,6 +104,7 @@ export default function LiveRoleTracker() {
     if (status === 'Placed') return 'blue'
     if (status === 'Active') return 'green'
     if (status === 'Paused') return 'yellow'
+    if (status === 'Archived') return 'gray'
     return 'gray'
   }
 
@@ -117,7 +120,17 @@ export default function LiveRoleTracker() {
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#111' }}>Trackers</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: '#111' }}>Trackers</h2>
+          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <input 
+              type="checkbox" 
+              checked={showArchived} 
+              onChange={e => setShowArchived(e.target.checked)} 
+            />
+            Show Archived
+          </label>
+        </div>
         <button onClick={handleAddRow} className={styles.actionButton}>+ Add Role</button>
       </div>
 
@@ -154,42 +167,78 @@ export default function LiveRoleTracker() {
             </tr>
           </thead>
           <tbody>
-            {roles.map(r => {
+            {roles.filter(r => showArchived || r.status !== 'Archived').map(r => {
               const daysToPlacement = calculateDays(r.target_placement_date)
               const isOverdue = daysToPlacement !== null && daysToPlacement < 0 && r.status !== 'Placed'
+              const currentMilestone = Array.isArray(r.milestones_json) 
+                ? r.milestones_json.find((m: any) => !m.is_achieved) 
+                : null
 
               return (
                 <tr key={r.id}>
                   {/* Client Name Cell */}
                   <td>
-                    {!r.lead_id && !r.manual_client_name ? (
+                    {leadSetupModalId === r.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bg-secondary)', padding: 8, borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <input 
+                          autoFocus 
+                          className={styles.input} 
+                          placeholder="Native Lead Name" 
+                          id={`lead_name_${r.id}`} 
+                        />
+                        <select className={styles.select} id={`lead_stg_${r.id}`}>
+                          <option value="">Select Pipeline Stage...</option>
+                          {stages.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-primary" style={{ flex: 1, padding: '4px 0', fontSize: 11 }} onClick={async () => {
+                            const nm = (document.getElementById(`lead_name_${r.id}`) as HTMLInputElement).value
+                            const st = (document.getElementById(`lead_stg_${r.id}`) as HTMLInputElement).value
+                            if (!nm || !st) return alert('Name and Stage required')
+                            const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_name: nm, current_stage: st }) })
+                            const data = await res.json()
+                            if (data.id) {
+                              await handleUpdate(r.id, 'lead_id', data.id)
+                              setLeadSetupModalId(null)
+                            }
+                          }}>Create</button>
+                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => setLeadSetupModalId(null)}>✕</button>
+                        </div>
+                      </div>
+                    ) : !r.lead_id && !r.manual_client_name ? (
                       <select 
                         className={styles.select}
                         value=""
                         onChange={(e) => {
                           const val = e.target.value
-                          if (val === 'manual') handleUpdate(r.id, 'manual_client_name', 'New Client')
+                          if (val === 'manual') setLeadSetupModalId(r.id)
+                          else if (val === 'legacy_manual') handleUpdate(r.id, 'manual_client_name', 'New Manual Client')
                           else handleUpdate(r.id, 'lead_id', val)
                         }}
                       >
                         <option value="">Select Lead...</option>
-                        <option value="manual">-- Setup Manual Client --</option>
+                        <option value="legacy_manual">-- Setup Text-Only Client --</option>
+                        <option value="manual">-- Create Native Lead --</option>
                         {leads.map(l => (
                           <option key={l.id} value={l.id}>{l.contact_name || l.company_name}</option>
                         ))}
                       </select>
                     ) : r.lead_id ? (
                       <div className={styles.badgeCell} style={{ justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 500 }}>{r.order_leads?.contact_name || 'Linked Lead'}</span>
+                        <span style={{ fontWeight: 500 }}>{r.order_leads?.contact_name || r.order_leads?.company_name || 'Linked Lead'}</span>
                         <button style={{ fontSize: 10, cursor: 'pointer', border: 'none', background: 'none', color: '#999' }} onClick={() => handleUpdate(r.id, 'lead_id', null)}>✕</button>
                       </div>
                     ) : (
-                      <input 
-                        className={styles.input}
-                        value={r.manual_client_name || ''}
-                        onChange={(e) => handleUpdate(r.id, 'manual_client_name', e.target.value)}
-                        placeholder="Client Name"
-                      />
+                      <div className={styles.badgeCell} style={{ justifyContent: 'space-between' }}>
+                        <input 
+                          className={styles.input}
+                          style={{ margin: 0 }}
+                          value={r.manual_client_name || ''}
+                          onChange={(e) => handleUpdate(r.id, 'manual_client_name', e.target.value)}
+                          placeholder="Client Name"
+                        />
+                        <button style={{ fontSize: 10, cursor: 'pointer', border: 'none', background: 'none', color: '#999', paddingLeft: 4 }} onClick={() => handleUpdate(r.id, 'manual_client_name', null)}>✕</button>
+                      </div>
                     )}
                   </td>
 
@@ -225,16 +274,18 @@ export default function LiveRoleTracker() {
                     </select>
                   </td>
 
-                  {/* Recruitment Stage */}
+                  {/* Recruitment Stage (Milestone Read-only) */}
                   <td>
-                    <select 
-                      className={styles.select}
-                      value={r.recruitment_stage || ''}
-                      onChange={(e) => handleUpdate(r.id, 'recruitment_stage', e.target.value)}
-                    >
-                      <option value="">Select...</option>
-                      {recStages.map((s: any) => <option key={s.id} value={s.label}>{s.label}</option>)}
-                    </select>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', padding: '6px 0' }}>
+                      {currentMilestone ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
+                          {currentMilestone.label}
+                        </div>
+                      ) : (
+                        <div style={{ color: 'var(--text-muted)' }}>No Active Milestone</div>
+                      )}
+                    </div>
                   </td>
 
                   {/* Target Placement */}
@@ -266,14 +317,43 @@ export default function LiveRoleTracker() {
 
                   {/* Recruiter */}
                   <td>
-                    <select 
-                      className={styles.select}
-                      value={r.recruiter_id || ''}
-                      onChange={(e) => handleUpdate(r.id, 'recruiter_id', e.target.value)}
-                    >
-                      <option value="">Select Recruiter...</option>
-                      {recruiters.map(rec => <option key={rec.id} value={rec.id}>{rec.name}</option>)}
-                    </select>
+                    <div className={styles.comboboxWrap} style={{ position: 'relative' }} tabIndex={0} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { document.getElementById(`dropdown_${r.id}`)!.style.display = 'none'; } }}>
+                      <button 
+                        type="button" 
+                        className={styles.select} 
+                        onClick={() => {
+                          const popup = document.getElementById(`dropdown_${r.id}`)!
+                          popup.style.display = popup.style.display === 'block' ? 'none' : 'block'
+                        }} 
+                        style={{ width: '100%', textAlign: 'left', minHeight: 32, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                      >
+                        <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                          {Array.isArray(r.recruiters_json) && r.recruiters_json.length > 0
+                            ? recruiters.filter(rec => r.recruiters_json.includes(rec.id)).map(rec => rec.name).join(', ')
+                            : 'Select recruiters…'}
+                        </span>
+                      </button>
+                      <div id={`dropdown_${r.id}`} style={{ display: 'none', position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 300, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+                        {recruiters.map(rec => {
+                          const selected = Array.isArray(r.recruiters_json) && r.recruiters_json.includes(rec.id)
+                          return (
+                            <label key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => {
+                                  let next = Array.isArray(r.recruiters_json) ? [...r.recruiters_json] : []
+                                  if (selected) next = next.filter(n => n !== rec.id)
+                                  else next.push(rec.id)
+                                  handleUpdate(r.id, 'recruiters_json', next)
+                                }}
+                              />
+                              <span>{rec.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </td>
 
                   {/* Placed By */}
@@ -304,6 +384,7 @@ export default function LiveRoleTracker() {
                         <option value="Active">Active</option>
                         <option value="Placed">Placed</option>
                         <option value="Paused">Paused</option>
+                        <option value="Archived">Archived</option>
                       </select>
                     </div>
                   </td>
