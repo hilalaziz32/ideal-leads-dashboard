@@ -79,17 +79,15 @@ export default function LiveMilestones() {
     return m
   }
 
-  const updateMilestone = (role: any, milestoneId: string, field: string, value: any) => {
+  const updateMilestone = (role: any, milestoneId: string, updates: any) => {
     const list = getMilestones(role)
-    const updated = list.map((m: any) => m.id === milestoneId ? { ...m, [field]: value } : m)
+    const updated = list.map((m: any) => m.id === milestoneId ? { ...m, ...updates } : m)
     handleUpdate(role.id, 'milestones_json', updated)
   }
 
   const addCustomMilestone = (role: any) => {
-    const name = prompt('Enter custom milestone name:')
-    if (!name) return
     const list = getMilestones(role)
-    const updated = [...list, { id: Math.random().toString(36).substr(2, 9), label: name, target_date: '', is_achieved: false, is_missed: false }]
+    const updated = [...list, { id: Math.random().toString(36).substr(2, 9), label: 'New Milestone', target_date: '', is_achieved: false, is_missed: false }]
     handleUpdate(role.id, 'milestones_json', updated)
   }
 
@@ -400,7 +398,7 @@ export default function LiveMilestones() {
                                 <td style={{ textDecoration: stg.is_achieved ? 'line-through' : 'none' }}>
                                   <input 
                                     value={stg.label} 
-                                    onChange={(e) => updateMilestone(r, stg.id, 'label', e.target.value)} 
+                                    onChange={(e) => updateMilestone(r, stg.id, { label: e.target.value })} 
                                     style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', font: 'inherit' }}
                                   />
                                 </td>
@@ -415,7 +413,7 @@ export default function LiveMilestones() {
                                       className={styles.input}
                                       title="Set Date"
                                       value={stg.target_date || ''}
-                                      onChange={(e) => updateMilestone(r, stg.id, 'target_date', e.target.value)}
+                                      onChange={(e) => updateMilestone(r, stg.id, { target_date: e.target.value })}
                                       style={{ border: stg.target_date ? '1px solid var(--accent)' : '1px solid var(--border)', background: stg.target_date ? 'transparent' : 'var(--bg-secondary)', padding: '5px 8px' }}
                                     />
                                   )}
@@ -424,13 +422,13 @@ export default function LiveMilestones() {
                                   <div style={{ display: 'flex', gap: 4 }}>
                                     <button 
                                       style={{ flex: 1, padding: '4px 0', border: '1px solid', borderRadius: 4, cursor: 'pointer', background: stg.is_achieved ? '#059669' : 'transparent', color: stg.is_achieved ? '#fff' : '#059669', borderColor: '#059669', fontSize: 11, fontWeight: 600 }}
-                                      onClick={() => { updateMilestone(r, stg.id, 'is_achieved', !stg.is_achieved); if (!stg.is_achieved) updateMilestone(r, stg.id, 'is_missed', false); }}
+                                      onClick={() => updateMilestone(r, stg.id, { is_achieved: !stg.is_achieved, is_missed: false })}
                                     >
                                       ✓
                                     </button>
                                     <button 
                                       style={{ flex: 1, padding: '4px 0', border: '1px solid', borderRadius: 4, cursor: 'pointer', background: stg.is_missed ? '#DC2626' : 'transparent', color: stg.is_missed ? '#fff' : '#DC2626', borderColor: '#DC2626', fontSize: 11, fontWeight: 600 }}
-                                      onClick={() => { updateMilestone(r, stg.id, 'is_missed', !stg.is_missed); if (!stg.is_missed) updateMilestone(r, stg.id, 'is_achieved', false); }}
+                                      onClick={() => updateMilestone(r, stg.id, { is_missed: !stg.is_missed, is_achieved: false })}
                                     >
                                       ✗
                                     </button>

@@ -57,6 +57,28 @@ export default function LiveRoleTracker() {
     }
   }
 
+  const calculateAutoDate = (baseDate: string | null, daysToAdd: number) => {
+    if (!baseDate) return ''
+    const d = new Date(baseDate)
+    if (isNaN(d.getTime())) return ''
+    d.setUTCDate(d.getUTCDate() + daysToAdd)
+    return d.toISOString().split('T')[0]
+  }
+
+  const getMilestones = (r: any) => {
+    let m = Array.isArray(r.milestones_json) ? r.milestones_json : []
+    if (m.length === 0) {
+      m = recStages.filter(s => s.label !== 'Recruiting').map(s => ({
+        id: s.id || Math.random().toString(36).substr(2, 9),
+        label: s.label,
+        target_date: calculateAutoDate(r.recruiting_start_date, s.interval_days),
+        is_achieved: false,
+        is_missed: false
+      }))
+    }
+    return m
+  }
+
   const handleAddRow = async () => {
     try {
       const res = await fetch('/api/turnaround/roles', {
@@ -215,10 +237,11 @@ export default function LiveRoleTracker() {
             {roles.filter(r => showArchived || r.status !== 'Archived').map(r => {
               const daysToPlacement = calculateDays(r.target_placement_date)
               const isOverdue = daysToPlacement !== null && daysToPlacement < 0 && r.status !== 'Placed'
-              const currentMilestone = Array.isArray(r.milestones_json) 
-                ? r.milestones_json.find((m: any) => !m.is_achieved && !m.is_missed) 
+              const rMilestones = getMilestones(r)
+              const currentMilestone = Array.isArray(rMilestones) 
+                ? rMilestones.find((m: any) => !m.is_achieved && !m.is_missed) 
                 : null
-              const hasMissed = Array.isArray(r.milestones_json) && r.milestones_json.some((m: any) => m.is_missed)
+              const hasMissed = Array.isArray(rMilestones) && rMilestones.some((m: any) => m.is_missed)
 
               return (
                 <tr key={r.id}>
@@ -337,7 +360,7 @@ export default function LiveRoleTracker() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           Next: {currentMilestone.label}
                         </div>
-                      ) : !currentMilestone && Array.isArray(r.milestones_json) && r.milestones_json.length > 0 && !hasMissed ? (
+                      ) : !currentMilestone && Array.isArray(rMilestones) && rMilestones.length > 0 && !hasMissed ? (
                         <div style={{ color: '#059669', fontWeight: 600 }}>✓ All Achieved</div>
                       ) : !currentMilestone && !hasMissed ? (
                         <div style={{ color: 'var(--text-muted)' }}>No Active Milestone</div>

@@ -289,7 +289,7 @@ export default function MetricsDashboard() {
 
   // ── Target Derivations ──
   const metaDaily = config['target_meta_daily'] || 20
-  const websiteWeekly = config['target_website_weekly'] || 1
+  const websiteDaily = config['target_website_daily'] || config['target_website_weekly'] || 1
   const activeClients = config['active_clients_count'] || 100
   const refPct = config['target_referral_pct'] || 0.15
   const reorderPct = config['target_reorder_pct'] || 0.07
@@ -438,7 +438,7 @@ export default function MetricsDashboard() {
                     />
                   </div>
                   <div className={styles.settingItem}>
-                    <label className={styles.settingLabel}>Web Target (Sundays)</label>
+                    <label className={styles.settingLabel}>Web Target (Daily)</label>
                     <input 
                       type="number" 
                       className={styles.settingInput} 
@@ -497,7 +497,7 @@ export default function MetricsDashboard() {
                         // Skip Sundays for Meta Targets (matching user spreadsheet)
                         const showTarget = d.getDay() !== 0
                         return (
-                          <td key={i}>{showTarget ? metaDaily : <span className={styles.empty}>—</span>}</td>
+                          <td key={i}>{showTarget ? metaDaily : ''}</td>
                         )
                       })}
                     </tr>
@@ -532,10 +532,8 @@ export default function MetricsDashboard() {
                       <td className={styles.rowLabel}># Leads</td>
                       <td className={styles.targetCell}>Target</td>
                       {dates.map((d, i) => {
-                        // Only target on Sundays (matching user spreadsheet)
-                        const showTarget = d.getDay() === 0
                         return (
-                          <td key={i}>{showTarget ? websiteWeekly : <span className={styles.empty}>—</span>}</td>
+                          <td key={i}>{websiteDaily}</td>
                         )
                       })}
                     </tr>
@@ -750,7 +748,7 @@ export default function MetricsDashboard() {
                                   <td className={styles.rowLabel}>Completed</td>
                                   <td className={styles.targetCell}>Target</td>
                                   {dates.map((d, i) => (
-                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_completed > 0 ? tTarget.target_completed : <span className={styles.empty}>—</span>}</td>
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_completed > 0 ? tTarget.target_completed : ''}</td>
                                   ))}
                                </tr>
                                <tr>
@@ -774,7 +772,7 @@ export default function MetricsDashboard() {
                                   <td className={styles.rowLabel}>Passed</td>
                                   <td className={styles.targetCell}>Target</td>
                                   {dates.map((d, i) => (
-                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_passed > 0 ? tTarget.target_passed : <span className={styles.empty}>—</span>}</td>
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_passed > 0 ? tTarget.target_passed : ''}</td>
                                   ))}
                                </tr>
                                <tr>
@@ -798,7 +796,7 @@ export default function MetricsDashboard() {
                                   <td className={styles.rowLabel}>Failed</td>
                                   <td className={styles.targetCell}>Target</td>
                                   {dates.map((d, i) => (
-                                    <td key={i}><span className={styles.empty}>—</span></td>
+                                    <td key={i}></td>
                                   ))}
                                </tr>
                                <tr>
@@ -821,7 +819,7 @@ export default function MetricsDashboard() {
                                   <td className={styles.rowLabel}>Interviewed</td>
                                   <td className={styles.targetCell}>Target</td>
                                   {dates.map((d, i) => (
-                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_l1 > 0 ? tTarget.target_l1 : <span className={styles.empty}>—</span>}</td>
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_l1 > 0 ? tTarget.target_l1 : ''}</td>
                                   ))}
                                </tr>
                                <tr>
@@ -840,7 +838,7 @@ export default function MetricsDashboard() {
                                               className={styles.settingInput} 
                                               style={{ width: '100%', height: 32, padding: 4, textAlign: 'center', background: 'transparent', border: '1px solid transparent', boxShadow: 'none' }} 
                                               defaultValue={actual || ''} 
-                                              placeholder="—"
+                                              placeholder=""
                                               onBlur={(e) => handleManualActualUpdate(title, dayISO, 'l1_actual', e.target.value)}
                                            />
                                         </td>
@@ -854,7 +852,7 @@ export default function MetricsDashboard() {
                                   <td className={styles.rowLabel}>Hires</td>
                                   <td className={styles.targetCell}>Target</td>
                                   {dates.map((d, i) => (
-                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_hires > 0 ? tTarget.target_hires : <span className={styles.empty}>—</span>}</td>
+                                    <td key={i}>{tTarget.target_days.includes(d.getDay()) && tTarget.target_hires > 0 ? tTarget.target_hires : ''}</td>
                                   ))}
                                </tr>
                                <tr>
@@ -873,7 +871,7 @@ export default function MetricsDashboard() {
                                               className={styles.settingInput} 
                                               style={{ width: '100%', height: 32, padding: 4, textAlign: 'center', background: 'transparent', border: '1px solid transparent', boxShadow: 'none' }} 
                                               defaultValue={actual || ''} 
-                                              placeholder="—"
+                                              placeholder=""
                                               onBlur={(e) => handleManualActualUpdate(title, dayISO, 'hires_actual', e.target.value)}
                                            />
                                         </td>
