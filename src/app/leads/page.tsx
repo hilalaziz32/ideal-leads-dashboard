@@ -197,6 +197,7 @@ export default function LeadsPipelinePage() {
               <thead>
                 <tr>
                   <th>Client Contact</th>
+                  <th>Source</th>
                   <th>Current Stage</th>
                   <th>Deal Value</th>
                   <th>Executive</th>
@@ -234,6 +235,9 @@ export default function LeadsPipelinePage() {
                           </div>
                           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{lead.contact_email ?? 'No email provided'}</div>
                         </div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {lead.source || '—'}
                       </td>
                       <td>
                         <span
