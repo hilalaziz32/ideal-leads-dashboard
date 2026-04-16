@@ -22,6 +22,13 @@ const STAGE_COLORS: Record<string, { bg: string, text: string }> = {
   'closed': { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)' },
 }
 
+const SOURCE_COLORS: Record<string, { bg: string, text: string }> = {
+  'meta': { bg: 'rgba(24, 119, 242, 0.1)', text: '#1877F2' },
+  'helm.ceo': { bg: 'var(--purple-bg)', text: 'var(--purple)' },
+  'coordinators.pro': { bg: 'var(--info-bg)', text: 'var(--info)' },
+  'default': { bg: 'var(--bg-secondary)', text: 'var(--text-secondary)' },
+}
+
 function formatCurrency(val: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
 }
@@ -236,8 +243,21 @@ export default function LeadsPipelinePage() {
                           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{lead.contact_email ?? 'No email provided'}</div>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {lead.source || '—'}
+                      <td>
+                        {lead.source ? (
+                          <span
+                            className="badge"
+                            style={{
+                              background: (SOURCE_COLORS[lead.source.toLowerCase()] || SOURCE_COLORS['default']).bg,
+                              color: (SOURCE_COLORS[lead.source.toLowerCase()] || SOURCE_COLORS['default']).text,
+                              textTransform: lead.source.toLowerCase() === 'meta' ? 'capitalize' : 'none'
+                            }}
+                          >
+                            {lead.source.toLowerCase() === 'meta' ? 'Meta' : lead.source}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
                       </td>
                       <td>
                         <span
