@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { LeadWithOverdue } from '@/lib/types'
 import styles from '../dashboard.module.css'
@@ -120,6 +120,13 @@ export default function LeadsPipelinePage() {
     return matchSearch && matchStage && matchOverdue
   })
 
+  const groupedLeads = filtered.reduce((acc, lead) => {
+    const sourceKey = lead.source ? lead.source.toLowerCase() : 'unknown'
+    if (!acc[sourceKey]) acc[sourceKey] = []
+    acc[sourceKey].push(lead)
+    return acc
+  }, {} as Record<string, LeadWithOverdue[]>)
+
   const overdueCount = leads.filter((l) => l.is_overdue).length
 
   return (
@@ -214,11 +221,26 @@ export default function LeadsPipelinePage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead) => {
-                  const dangerState = lead.is_overdue
-                  const styleData = STAGE_COLORS[lead.current_stage] ?? STAGE_COLORS['closed']
-                  
-                  return (
+                {Object.entries(groupedLeads).map(([sourceKey, sourceLeads]) => (
+                  <Fragment key={sourceKey}>
+                    <tr style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+                      <td colSpan={8} style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>
+                        Source: {
+                          sourceKey === 'meta' ? (
+                            <span className="badge" style={{ background: SOURCE_COLORS['meta'].bg, color: SOURCE_COLORS['meta'].text, marginLeft: 8 }}>Meta</span>
+                          ) : sourceKey === 'unknown' ? (
+                            <span className="badge" style={{ background: SOURCE_COLORS['default'].bg, color: SOURCE_COLORS['default'].text, marginLeft: 8 }}>Unspecified</span>
+                          ) : (
+                            <span className="badge" style={{ background: (SOURCE_COLORS[sourceKey] || SOURCE_COLORS['default']).bg, color: (SOURCE_COLORS[sourceKey] || SOURCE_COLORS['default']).text, marginLeft: 8 }}>{sourceKey}</span>
+                          )
+                        } <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-muted)' }}>({sourceLeads.length} leads)</span>
+                      </td>
+                    </tr>
+                    {sourceLeads.map((lead) => {
+                      const dangerState = lead.is_overdue
+                      const styleData = STAGE_COLORS[lead.current_stage] ?? STAGE_COLORS['closed']
+                      
+                      return (
                     <tr 
                       key={lead.id} 
                       style={{ 
@@ -314,6 +336,8 @@ export default function LeadsPipelinePage() {
                     </tr>
                   )
                 })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
