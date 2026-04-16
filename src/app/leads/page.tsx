@@ -135,7 +135,7 @@ export default function LeadsPipelinePage() {
         <div>
           <h1 className={styles.pageTitle}>Pipeline Overview</h1>
           <p className={styles.pageSubtitle}>
-            {leads.length} Active Leads in Queue
+            <span style={{ color: '#000', fontSize: '1.1em', fontWeight: 700 }}>{leads.length}</span> Active Leads in Queue
           </p>
         </div>
       </div>
@@ -233,7 +233,7 @@ export default function LeadsPipelinePage() {
                           ) : (
                             <span className="badge" style={{ background: (SOURCE_COLORS[sourceKey] || SOURCE_COLORS['default']).bg, color: (SOURCE_COLORS[sourceKey] || SOURCE_COLORS['default']).text, marginLeft: 8 }}>{sourceKey}</span>
                           )
-                        } <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-muted)' }}>({sourceLeads.length} leads)</span>
+                        } <span style={{ marginLeft: 6, fontSize: 14, color: '#000', fontWeight: 700 }}>({sourceLeads.length} leads)</span>
                       </td>
                     </tr>
                     {sourceLeads.map((lead) => {
